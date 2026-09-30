@@ -313,12 +313,12 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     // Normalize repeated slashes so Railway/proxy path normalization cannot
     // accidentally turn the public root into a 404.
-    const pathname = (pathname || '/').replace(/\/{2,}/g, '/') || '/';
+    const pathname = (url.pathname || '/').replace(/\/{2,}/g, '/') || '/';
 
     const rootPayload = {
       ok: true,
       service: 'sookhtman-api',
-      version: '1.2.1-root-fixed',
+      version: '1.3.1-railway-final',
       message: 'سرویس مدیریت سوخت و استعلام خودرو فعال است.',
       health: '/api/health',
       sync: '/api/v1/sync',
@@ -334,7 +334,7 @@ const server = http.createServer(async (req, res) => {
       json(res, 200, {
         ok: true,
         service: 'sookhtman-api',
-        version: '1.2.1-root-fixed',
+        version: '1.3.1-railway-final',
         database: Boolean(pool),
         providers: {
           itoll: Boolean(process.env.ITOLL_API_URL),

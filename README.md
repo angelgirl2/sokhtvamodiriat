@@ -167,3 +167,7 @@ flutter build apk --release `
 
 ## Railway root verification
 After deployment open `/` or `/api/health`. The JSON must contain `version: 1.2.1-root-fixed`. If `/api/health` is updated but `/` still says `مسیر پیدا نشد.`, Railway is serving a different deployment/commit than this package.
+
+
+## Railway deployment check
+After deployment, GET `/api/health` must return `version: 1.3.1-railway-final`. The Flutter default backend URL is `https://sokhtvamodiriat-production.up.railway.app`.
