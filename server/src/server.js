@@ -311,23 +311,30 @@ const server = http.createServer(async (req, res) => {
 
   try {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    // Normalize repeated slashes so Railway/proxy path normalization cannot
+    // accidentally turn the public root into a 404.
+    const pathname = (pathname || '/').replace(/\/{2,}/g, '/') || '/';
 
-    if (req.method === 'GET' && url.pathname === '/') {
-      json(res, 200, {
-        ok: true,
-        service: 'sookhtman-api',
-        message: 'سرویس مدیریت سوخت و استعلام خودرو فعال است.',
-        health: '/api/health',
-        sync: '/api/v1/sync',
-        bale: '/api/v1/bale/message',
-      });
+    const rootPayload = {
+      ok: true,
+      service: 'sookhtman-api',
+      version: '1.2.1-root-fixed',
+      message: 'سرویس مدیریت سوخت و استعلام خودرو فعال است.',
+      health: '/api/health',
+      sync: '/api/v1/sync',
+      bale: '/api/v1/bale/message',
+    };
+
+    if (req.method === 'GET' && (pathname === '/' || pathname === '/api' || pathname === '/index.html')) {
+      json(res, 200, rootPayload);
       return;
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/health') {
+    if (req.method === 'GET' && pathname === '/api/health') {
       json(res, 200, {
         ok: true,
         service: 'sookhtman-api',
+        version: '1.2.1-root-fixed',
         database: Boolean(pool),
         providers: {
           itoll: Boolean(process.env.ITOLL_API_URL),
@@ -340,7 +347,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/inquiry/config') {
+    if (req.method === 'GET' && pathname === '/api/inquiry/config') {
       json(res, 200, {
         ok: true,
         available: Object.fromEntries(
@@ -351,7 +358,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const inquiryMatch = url.pathname.match(/^\/(?:api\/)?inquiry\/([a-z_]+)$/);
+    const inquiryMatch = pathname.match(/^\/(?:api\/)?inquiry\/([a-z_]+)$/);
     if (req.method === 'GET' && inquiryMatch) {
       const kind = inquiryMatch[1];
       if (!providerMap[kind]) {
@@ -371,7 +378,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'GET' && url.pathname === '/api/v1/sync/latest') {
+    if (req.method === 'GET' && pathname === '/api/v1/sync/latest') {
       const deviceId = String(url.searchParams.get('device_id') || '').trim();
       if (!requireDeviceKey(req, deviceId)) {
         json(res, 401, { ok: false, message: 'دسترسی همگام‌سازی مجاز نیست.' });
@@ -382,7 +389,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'POST' && url.pathname === '/api/v1/sync') {
+    if (req.method === 'POST' && pathname === '/api/v1/sync') {
       const body = await readJsonBody(req, 8 * 1024 * 1024);
       const deviceId = String(body?.device_id || '').trim();
       if (!requireDeviceKey(req, deviceId)) {
@@ -394,7 +401,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'POST' && url.pathname === '/api/v1/bale/message') {
+    if (req.method === 'POST' && pathname === '/api/v1/bale/message') {
       if (rateLimited(req)) {
         json(res, 429, { ok: false, message: 'تعداد درخواست‌ها بیش از حد مجاز است.' });
         return;
@@ -415,7 +422,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'POST' && url.pathname === '/api/v1/bale/photo') {
+    if (req.method === 'POST' && pathname === '/api/v1/bale/photo') {
       if (rateLimited(req)) {
         json(res, 429, { ok: false, message: 'تعداد درخواست‌ها بیش از حد مجاز است.' });
         return;
@@ -468,7 +475,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const requestStatusMatch = url.pathname.match(/^\/api\/v1\/requests\/(\d+)\/status$/);
+    const requestStatusMatch = pathname.match(/^\/api\/v1\/requests\/(\d+)\/status$/);
     if (req.method === 'GET' && requestStatusMatch) {
       json(res, 200, {
         ok: true,

@@ -74,7 +74,7 @@ PROVIDER_TIMEOUT_MS=25000
 بعد از Deploy، برای سرویس API یک Public Domain بسازید و مسیر زیر را تست کنید:
 
 ```text
-GET https://sokhtvamodiriat-production.up.railway.app/api/health
+GET https://YOUR-DOMAIN/api/health
 ```
 
 باید پاسخ شامل `ok: true` و وضعیت `database` و `bale` بدهد.
@@ -160,6 +160,10 @@ node src/server.js
 ```powershell
 flutter pub get
 flutter build apk --release `
-  --dart-define=SOKHT_API_PRIMARY_URL=https://sokhtvamodiriat-production.up.railway.app `
-  --dart-define=SOKHT_API_FALLBACK_URL=
+  --dart-define=SOKHT_API_PRIMARY_URL=https://YOUR-DOMAIN `
+  --dart-define=SOKHT_API_FALLBACK_URL=https://YOUR-RAILWAY-DOMAIN.up.railway.app
 ```
+
+
+## Railway root verification
+After deployment open `/` or `/api/health`. The JSON must contain `version: 1.2.1-root-fixed`. If `/api/health` is updated but `/` still says `مسیر پیدا نشد.`, Railway is serving a different deployment/commit than this package.
