@@ -312,6 +312,18 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
+    if (req.method === 'GET' && url.pathname === '/') {
+      json(res, 200, {
+        ok: true,
+        service: 'sookhtman-api',
+        message: 'سرویس مدیریت سوخت و استعلام خودرو فعال است.',
+        health: '/api/health',
+        sync: '/api/v1/sync',
+        bale: '/api/v1/bale/message',
+      });
+      return;
+    }
+
     if (req.method === 'GET' && url.pathname === '/api/health') {
       json(res, 200, {
         ok: true,

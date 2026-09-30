@@ -76,7 +76,7 @@ class SecurityManager {
   // --- Integrations ----------------------------------------------------------
   static const _compilePrimaryRailwayUrl = String.fromEnvironment(
     'SOKHT_API_PRIMARY_URL',
-    defaultValue: 'https://fuel-management-production.up.railway.app',
+    defaultValue: 'https://sokhtvamodiriat-production.up.railway.app',
   );
   static const _compileFallbackRailwayUrl = String.fromEnvironment(
     'SOKHT_API_FALLBACK_URL',
@@ -84,8 +84,12 @@ class SecurityManager {
   );
 
   List<String> getRailwayUrls() {
+    final storedUrl = _prefs.getString(_keyRailwayUrl)?.trim() ?? '';
+    final normalizedStoredUrl = storedUrl == 'https://fuel-management-production.up.railway.app'
+        ? _compilePrimaryRailwayUrl
+        : storedUrl;
     final urls = <String>[
-      _prefs.getString(_keyRailwayUrl) ?? '',
+      normalizedStoredUrl,
       _compilePrimaryRailwayUrl,
       _compileFallbackRailwayUrl,
     ];
