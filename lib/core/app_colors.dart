@@ -21,6 +21,11 @@ class AppColors {
   static const fuelGreen = Color(0xFF10B981);
   static const fuelRed = Color(0xFFEF4444);
 
+  static const emeraldGreen = fuelGreen;
+  static const rosePink = Color(0xFFEC4899);
+  static const orangeAccent = Color(0xFFF97316);
+  static const deepIndigo = Color(0xFF6366F1);
+
   // Light backgrounds
   static const lightBackground = Color(0xFFF8FAFC);
   static const lightSurface = Color(0xFFFFFFFF);
@@ -71,6 +76,8 @@ enum AppThemeColor {
 
   const AppThemeColor(this.title, this.primary, this.primaryDark);
 
+  String get label => title;
+
   final String title;
   final Color primary;
   final Color primaryDark;
@@ -83,6 +90,8 @@ enum DarkModePref {
   dark('تاریک (دارک)');
 
   const DarkModePref(this.title);
+
+  String get label => title;
 
   final String title;
 }

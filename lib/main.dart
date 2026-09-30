@@ -1,5 +1,5 @@
 import 'dart:math' as math;
-import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
@@ -33,8 +33,8 @@ Future<void> main() async {
     railwaySyncService: RailwaySyncService(api: api),
     securityManager: securityManager,
   );
-  final notificationHelper = NotificationHelper();
-  await notificationHelper.initialize();
+  final notificationHelper = NotificationHelper.instance;
+  await notificationHelper.init();
 
   final appState = AppState(
     repository: repository,
@@ -53,21 +53,32 @@ class FuelApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppState>(
       builder: (context, appState, _) {
-        final theme = buildAppTheme(
-          appState.currentThemeColor,
-          appState.darkModePref,
+        final lightTheme = AppTheme.build(
+          accent: appState.currentThemeColor,
+          darkModePref: DarkModePref.light,
+          platformBrightness: Brightness.light,
         );
+        final darkTheme = AppTheme.build(
+          accent: appState.currentThemeColor,
+          darkModePref: DarkModePref.dark,
+          platformBrightness: Brightness.dark,
+        );
+        final themeMode = switch (appState.darkModePref) {
+          DarkModePref.system => ThemeMode.system,
+          DarkModePref.light => ThemeMode.light,
+          DarkModePref.dark => ThemeMode.dark,
+        };
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'مدیریت سوخت و استعلام',
           locale: const Locale('fa'),
           supportedLocales: const [Locale('fa')],
-          theme: theme.light,
-          darkTheme: theme.dark,
-          themeMode: theme.mode,
+          theme: lightTheme,
+          darkTheme: darkTheme,
+          themeMode: themeMode,
           builder: (context, child) {
             return Directionality(
-              textDirection: TextDirection.rtl,
+              textDirection: ui.TextDirection.rtl,
               child: MediaQuery(
                 data: MediaQuery.of(
                   context,
@@ -105,11 +116,11 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _bootstrap() async {
     final security = context.read<AppState>().securityManager;
-    onboardingSeen = security.isTutorialSeen();
+    onboardingSeen = security.isTutorialSeen;
     await Future<void>.delayed(const Duration(milliseconds: 2100));
     if (!mounted) return;
     setState(() {
-      destination = security.isPinSet()
+      destination = security.isPinEnabled
           ? AppDestination.lock
           : AppDestination.main;
       onboardingVisible = !onboardingSeen;
@@ -314,8 +325,7 @@ class _LockScreenState extends State<LockScreen> {
     try {
       final ok = await auth.authenticate(
         localizedReason: 'برای ورود به سامانه هویت خود را تایید کنید',
-        biometricOnly: true,
-        authMessages: const [],
+        options: const AuthenticationOptions(biometricOnly: true),
       );
       if (!mounted) return;
       if (ok) {
@@ -603,7 +613,10 @@ class _MainScreenState extends State<MainScreen> {
                       child: child,
                     );
                   },
-                  child: KeyedSubtree(key: ValueKey(tab), child: pages[tab]),
+                  child: KeyedSubtree(
+        key: ValueKey(tab),
+        child: pages[tab] ?? const SizedBox.shrink(),
+      ),
                 ),
               ),
               ModernFloatingNavigationBar(
@@ -1052,7 +1065,7 @@ class VehicleOverviewCard extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final due = reminders.where((e) => !e.isCompleted).length;
     return Hero(
-      tag: 'vehicle-${vehicle.id ?? vehicle.title}',
+      tag: 'vehicle-${vehicle.id}',
       child: Material(
         color: Colors.transparent,
         child: Container(
@@ -1413,7 +1426,7 @@ class _BarChartPainter extends CustomPainter {
           text: entries[i].key,
           style: const TextStyle(color: Colors.black54, fontSize: 11),
         ),
-        textDirection: TextDirection.rtl,
+        textDirection: ui.TextDirection.rtl,
       )..layout(maxWidth: width + 10);
       tp.paint(canvas, Offset(left - 2, size.height - 20));
     }
@@ -1762,9 +1775,9 @@ class ServiceRequestCard extends StatelessWidget {
           Text('شماره تماس: ${request.phoneNumber}'),
           const SizedBox(height: 6),
           Text('پلاک: ${request.vehiclePlate}'),
-          if (request.details.isNotEmpty) ...[
+          if (request.additionalDetails.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text('توضیحات: ${request.details}'),
+            Text('توضیحات: ${request.additionalDetails}'),
           ],
           const SizedBox(height: 12),
           Row(
@@ -2297,7 +2310,7 @@ class SettingsScreen extends StatelessWidget {
                 decoration: const InputDecoration(labelText: 'رنگ اصلی برنامه'),
                 items: AppThemeColor.values
                     .map(
-                      (e) => DropdownMenuItem(value: e, child: Text(e.label)),
+                      (e) => DropdownMenuItem(value: e, child: Text(e.title)),
                     )
                     .toList(),
                 onChanged: (value) {
@@ -2310,7 +2323,7 @@ class SettingsScreen extends StatelessWidget {
                 decoration: const InputDecoration(labelText: 'حالت نمایش'),
                 items: DarkModePref.values
                     .map(
-                      (e) => DropdownMenuItem(value: e, child: Text(e.label)),
+                      (e) => DropdownMenuItem(value: e, child: Text(e.title)),
                     )
                     .toList(),
                 onChanged: (value) {
@@ -2328,19 +2341,19 @@ class SettingsScreen extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('رمز ورود چهاررقمی'),
-                subtitle: Text(security.isPinSet() ? 'فعال است' : 'تنظیم نشده'),
+                subtitle: Text(security.isPinEnabled ? 'فعال است' : 'تنظیم نشده'),
                 trailing: FilledButton.tonal(
                   onPressed: () => showDialog(
                     context: context,
                     builder: (_) => const SetPinDialog(),
                   ),
-                  child: Text(security.isPinSet() ? 'تغییر' : 'تنظیم'),
+                  child: Text(security.isPinEnabled ? 'تغییر' : 'تنظیم'),
                 ),
               ),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('ورود بیومتریک'),
-                value: security.isBiometricEnabled(),
+                value: security.isBiometricEnabled,
                 onChanged: (value) => security.setBiometricEnabled(value),
               ),
             ],

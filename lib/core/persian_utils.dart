@@ -27,6 +27,15 @@ class PersianUtils {
   /// Alias used for currency amounts (Tomans).
   static String money(num value) => number(value);
 
+  /// Compatibility alias used by the UI for currency values.
+  static String withPrice(num value) => money(value);
+
+  /// Formats a decimal value with Persian digits.
+  static String decimal(num value) => toFa(value.toStringAsFixed(value == value.roundToDouble() ? 0 : 1));
+
+  /// Formats an epoch-millisecond timestamp as a date.
+  static String dateFromMillis(int millis) => date(DateTime.fromMillisecondsSinceEpoch(millis));
+
   /// `12.34` -> `۱۲.۳`
   static String liters(double value) => toFa(value.toStringAsFixed(1));
 

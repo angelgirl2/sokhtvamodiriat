@@ -1,10 +1,9 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
+
+import 'package:flutter/foundation.dart';
 import 'package:printing/printing.dart';
-import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'core/app_colors.dart';
@@ -549,9 +548,6 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> exportPdf() async {
-    final fontData = await rootBundle.load(
-      'assets/fonts/Vazirmatn-Regular.ttf',
-    );
     final font = await PdfGoogleFonts.nunitoExtraLight();
     final bytes = await ReportExporter.buildPdfBytes(
       vehicles: vehicles,

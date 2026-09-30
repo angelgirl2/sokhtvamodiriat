@@ -72,7 +72,6 @@ class AppTheme {
     return base.copyWith(
       colorScheme: scheme,
       scaffoldBackgroundColor: scheme.surface,
-      fontFamily: fontFamily,
       splashFactory: InkSparkle.splashFactory,
       textTheme: _textTheme(base.textTheme, scheme),
       appBarTheme: AppBarTheme(

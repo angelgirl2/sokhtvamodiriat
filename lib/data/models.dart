@@ -318,6 +318,8 @@ class ServiceRequest {
   final int submissionDateMillis;
   final int updatedDateMillis;
 
+  String get details => additionalDetails;
+
   const ServiceRequest({
     this.id = 0,
     required this.requestType,
