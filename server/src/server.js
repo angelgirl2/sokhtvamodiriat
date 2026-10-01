@@ -318,7 +318,7 @@ const server = http.createServer(async (req, res) => {
     const rootPayload = {
       ok: true,
       service: 'sookhtman-api',
-      version: '1.3.1-railway-final',
+      version: '1.3.2-healthcheck-final',
       message: 'سرویس مدیریت سوخت و استعلام خودرو فعال است.',
       health: '/api/health',
       sync: '/api/v1/sync',
@@ -330,11 +330,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/api/health') {
+    if (req.method === 'GET' && (pathname === '/health' || pathname === '/api/health')) {
       json(res, 200, {
         ok: true,
         service: 'sookhtman-api',
-        version: '1.3.1-railway-final',
+        version: '1.3.2-healthcheck-final',
         database: Boolean(pool),
         providers: {
           itoll: Boolean(process.env.ITOLL_API_URL),
