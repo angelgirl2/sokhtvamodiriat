@@ -14,8 +14,8 @@ class IranianPlate extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: Colors.black.withOpacity(.12)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(.07), blurRadius: 7, offset: const Offset(0, 3))],
+        border: Border.all(color: Colors.black.withValues(alpha: .12)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .07), blurRadius: 7, offset: const Offset(0, 3))],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

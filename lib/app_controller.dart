@@ -1,7 +1,4 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'data/local_db.dart';
 import 'data/models.dart';
@@ -67,6 +64,8 @@ class AppController extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  void refresh() => notifyListeners();
 
   void selectVehicle(int? id) {
     selectedVehicleId = id;

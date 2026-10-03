@@ -161,50 +161,64 @@ class LocalDatabase {
     }
   }
 
-  Future<List<Vehicle>> vehicles() async => (await db.query('vehicles', orderBy: 'id DESC'))
-      .map((e) => Vehicle.fromMap(e))
-      .toList();
+  Future<List<Vehicle>> vehicles() async {
+    final database = await db;
+    final rows = await database.query('vehicles', orderBy: 'id DESC');
+    return rows.map(Vehicle.fromMap).toList();
+  }
   Future<int> insertVehicle(Vehicle item) async => (await db).insert('vehicles', item.toMap()..remove('id'));
   Future<void> updateVehicle(Vehicle item) async => (await db).update('vehicles', item.toMap()..remove('id'), where: 'id=?', whereArgs: [item.id]);
   Future<void> deleteVehicle(int id) async => (await db).delete('vehicles', where: 'id=?', whereArgs: [id]);
 
-  Future<List<FuelLog>> fuelLogs() async => (await db.query('fuel_logs', orderBy: 'dateMillis DESC'))
-      .map((e) => FuelLog.fromMap(e))
-      .toList();
+  Future<List<FuelLog>> fuelLogs() async {
+    final database = await db;
+    final rows = await database.query('fuel_logs', orderBy: 'dateMillis DESC');
+    return rows.map(FuelLog.fromMap).toList();
+  }
   Future<int> insertFuelLog(FuelLog item) async => (await db).insert('fuel_logs', item.toMap()..remove('id'));
   Future<void> deleteFuelLog(int id) async => (await db).delete('fuel_logs', where: 'id=?', whereArgs: [id]);
 
-  Future<List<ServiceReminder>> reminders() async => (await db.query('service_reminders', orderBy: 'targetDateMillis ASC'))
-      .map((e) => ServiceReminder.fromMap(e))
-      .toList();
+  Future<List<ServiceReminder>> reminders() async {
+    final database = await db;
+    final rows = await database.query('service_reminders', orderBy: 'targetDateMillis ASC');
+    return rows.map(ServiceReminder.fromMap).toList();
+  }
   Future<int> insertReminder(ServiceReminder item) async => (await db).insert('service_reminders', item.toMap()..remove('id'));
   Future<void> updateReminder(ServiceReminder item) async => (await db).update('service_reminders', item.toMap()..remove('id'), where: 'id=?', whereArgs: [item.id]);
   Future<void> deleteReminder(int id) async => (await db).delete('service_reminders', where: 'id=?', whereArgs: [id]);
 
-  Future<List<ServiceHistory>> serviceHistory() async => (await db.query('service_history', orderBy: 'dateMillis DESC'))
-      .map((e) => ServiceHistory.fromMap(e))
-      .toList();
+  Future<List<ServiceHistory>> serviceHistory() async {
+    final database = await db;
+    final rows = await database.query('service_history', orderBy: 'dateMillis DESC');
+    return rows.map(ServiceHistory.fromMap).toList();
+  }
   Future<int> insertServiceHistory(ServiceHistory item) async => (await db).insert('service_history', item.toMap()..remove('id'));
   Future<void> deleteServiceHistory(int id) async => (await db).delete('service_history', where: 'id=?', whereArgs: [id]);
 
-  Future<List<ServiceRequest>> requests() async => (await db.query('service_requests', orderBy: 'submissionDateMillis DESC'))
-      .map((e) => ServiceRequest.fromMap(e))
-      .toList();
+  Future<List<ServiceRequest>> requests() async {
+    final database = await db;
+    final rows = await database.query('service_requests', orderBy: 'submissionDateMillis DESC');
+    return rows.map(ServiceRequest.fromMap).toList();
+  }
   Future<int> insertRequest(ServiceRequest item) async => (await db).insert('service_requests', item.toMap()..remove('id'));
   Future<void> updateRequest(ServiceRequest item) async => (await db).update('service_requests', item.toMap()..remove('id'), where: 'id=?', whereArgs: [item.id]);
   Future<void> deleteRequest(int id) async => (await db).delete('service_requests', where: 'id=?', whereArgs: [id]);
 
-  Future<List<InquiryRecord>> inquiries() async => (await db.query('inquiry_records', orderBy: 'dateMillis DESC'))
-      .map((e) => InquiryRecord.fromMap(e))
-      .toList();
+  Future<List<InquiryRecord>> inquiries() async {
+    final database = await db;
+    final rows = await database.query('inquiry_records', orderBy: 'dateMillis DESC');
+    return rows.map(InquiryRecord.fromMap).toList();
+  }
   Future<int> insertInquiry(InquiryRecord item) async => (await db).insert('inquiry_records', item.toMap()..remove('id'));
   Future<void> updateInquiry(InquiryRecord item) async => (await db).update('inquiry_records', item.toMap()..remove('id'), where: 'id=?', whereArgs: [item.id]);
   Future<void> deleteInquiry(int id) async => (await db).delete('inquiry_records', where: 'id=?', whereArgs: [id]);
 
   Future<int> enqueue(QueueItem item) async => (await db).insert('sync_queue', item.toMap()..remove('id'));
-  Future<List<QueueItem>> queue() async => (await db.query('sync_queue', orderBy: 'createdAt ASC'))
-      .map((e) => QueueItem.fromMap(e))
-      .toList();
+  Future<List<QueueItem>> queue() async {
+    final database = await db;
+    final rows = await database.query('sync_queue', orderBy: 'createdAt ASC');
+    return rows.map(QueueItem.fromMap).toList();
+  }
   Future<void> deleteQueueItem(int id) async => (await db).delete('sync_queue', where: 'id=?', whereArgs: [id]);
   Future<void> bumpQueueItem(int id, int attempts) async => (await db).update('sync_queue', {'attempts': attempts}, where: 'id=?', whereArgs: [id]);
 

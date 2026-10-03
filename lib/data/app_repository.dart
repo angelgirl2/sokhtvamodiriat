@@ -316,9 +316,11 @@ class AppRepository {
     final pending = (await getAllRequests())
         .where((request) => request.baleMessageId.startsWith('LOCAL-'));
     for (final request in pending) {
+      final requestId = request.id;
+      if (requestId == null) continue;
       final result = await _sendServiceRequestMessage(request);
       if (!result.isLocalFallback) {
-        await _setRequestBaleMessageId(request.id, result.messageId);
+        await _setRequestBaleMessageId(requestId, result.messageId);
         sent++;
       }
     }
@@ -474,9 +476,11 @@ class AppRepository {
       (inquiry) => inquiry.transactionRef.startsWith('LOCAL-'),
     );
     for (final inquiry in pending) {
+      final inquiryId = inquiry.id;
+      if (inquiryId == null) continue;
       final result = await _sendInquiryMessage(inquiry);
       if (!result.isLocalFallback) {
-        await _setInquiryRemoteRef(inquiry.id, result.messageId);
+        await _setInquiryRemoteRef(inquiryId, result.messageId);
         sent++;
       }
     }

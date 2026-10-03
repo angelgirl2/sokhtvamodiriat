@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
@@ -106,7 +105,7 @@ class SettingsScreen extends StatelessWidget {
               security.isBiometricEnabled,
               (value) async {
                 await security.setBiometricEnabled(value);
-                controller.notifyListeners();
+                controller.refresh();
               },
             ),
         ]),
@@ -266,7 +265,7 @@ class SettingsScreen extends StatelessWidget {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withOpacity(.10),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: .10),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(icon, color: Theme.of(context).colorScheme.primary),
@@ -291,7 +290,7 @@ class SettingsScreen extends StatelessWidget {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: AppTheme.turquoise.withOpacity(.10),
+          color: AppTheme.turquoise.withValues(alpha: .10),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Icon(icon, color: AppTheme.turquoise),
@@ -357,7 +356,7 @@ class SettingsScreen extends StatelessWidget {
 
     if (result == null) return;
     await controller.security.setThemeColor(result);
-    controller.notifyListeners();
+    controller.refresh();
   }
 
   Future<void> _darkDialog(BuildContext context) async {
@@ -383,7 +382,7 @@ class SettingsScreen extends StatelessWidget {
 
     if (result == null) return;
     await controller.security.setDarkMode(result);
-    controller.notifyListeners();
+    controller.refresh();
   }
 
   Future<void> _pinDialog(BuildContext context) async {
@@ -408,7 +407,7 @@ class SettingsScreen extends StatelessWidget {
 
       if (action == 'remove') {
         await controller.security.removePin();
-        controller.notifyListeners();
+        controller.refresh();
         return;
       }
       if (action != 'change') return;
@@ -459,7 +458,7 @@ class SettingsScreen extends StatelessWidget {
     if (ok != true) return;
     await controller.security.setPin(first.text);
     controller.unlocked = true;
-    controller.notifyListeners();
+    controller.refresh();
   }
 
   Future<void> _donation(BuildContext context) async {
@@ -594,7 +593,7 @@ class SettingsScreen extends StatelessWidget {
             text:
                 'Vehicles: ${vehicles.length} | Fuel logs: ${fuelLogs.length} | Service records: ${history.length}',
           ),
-          pw.Table.fromTextArray(
+          pw.TableHelper.fromTextArray(
             headers: const ['Vehicle', 'Plate', 'Fuel', 'Odometer'],
             data: vehicles
                 .map(
@@ -608,7 +607,7 @@ class SettingsScreen extends StatelessWidget {
                 .toList(),
           ),
           pw.SizedBox(height: 18),
-          pw.Table.fromTextArray(
+          pw.TableHelper.fromTextArray(
             headers: const ['Date', 'Liters', 'Cost', 'Odometer', 'Station'],
             data: fuelLogs
                 .map(
@@ -623,7 +622,7 @@ class SettingsScreen extends StatelessWidget {
                 .toList(),
           ),
           pw.SizedBox(height: 18),
-          pw.Table.fromTextArray(
+          pw.TableHelper.fromTextArray(
             headers: const ['Date', 'Service', 'Cost', 'Odometer'],
             data: history
                 .map(

@@ -33,7 +33,7 @@ class _HomeShellState extends State<HomeShell> {
         if (didPop) return;
         if (widget.controller.tab != 0) {
           widget.controller.tab = 0;
-          widget.controller.notifyListeners();
+          widget.controller.refresh();
           return;
         }
         final now = DateTime.now();

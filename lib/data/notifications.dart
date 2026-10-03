@@ -5,7 +5,7 @@ class NotificationService {
 
   Future<void> initialize() async {
     const settings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    await plugin.initialize(const InitializationSettings(android: settings));
+    await plugin.initialize(settings: const InitializationSettings(android: settings));
   }
 
   Future<void> showReminder(String title, String body) async {
@@ -17,10 +17,10 @@ class NotificationService {
       priority: Priority.high,
     );
     await plugin.show(
-      DateTime.now().millisecondsSinceEpoch.remainder(2147483647),
-      title,
-      body,
-      const NotificationDetails(android: details),
+      id: DateTime.now().millisecondsSinceEpoch.remainder(2147483647),
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(android: details),
     );
   }
 }

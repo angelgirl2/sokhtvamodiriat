@@ -45,7 +45,7 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary.withOpacity(.14), Colors.transparent, AppTheme.purple.withOpacity(.08)], begin: Alignment.topRight, end: Alignment.bottomLeft),
+          gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary.withValues(alpha: .14), Colors.transparent, AppTheme.purple.withValues(alpha: .08)], begin: Alignment.topRight, end: Alignment.bottomLeft),
         ),
         child: SafeArea(
           child: Center(
@@ -63,7 +63,7 @@ class _LockScreenState extends State<LockScreen> with SingleTickerProviderStateM
                   AnimatedBuilder(
                     animation: shake,
                     builder: (context, child) => Transform.translate(offset: Offset((shake.value < .5 ? shake.value : 1 - shake.value) * 16 * (shake.value < .5 ? 1 : -1), 0), child: child),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(6, (i) => AnimatedContainer(duration: AppMotion.fast, width: 13, height: 13, margin: const EdgeInsets.all(7), decoration: BoxDecoration(shape: BoxShape.circle, color: i < digits.length ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(.14))))),
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(6, (i) => AnimatedContainer(duration: AppMotion.fast, width: 13, height: 13, margin: const EdgeInsets.all(7), decoration: BoxDecoration(shape: BoxShape.circle, color: i < digits.length ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: .14))))),
                   ),
                   const SizedBox(height: 8),
                   SizedBox(height: 24, child: Text(error, style: TextStyle(color: Theme.of(context).colorScheme.error, fontWeight: FontWeight.w700))),
@@ -112,7 +112,7 @@ class _KeyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Theme.of(context).colorScheme.surface.withOpacity(.8),
+      color: Theme.of(context).colorScheme.surface.withValues(alpha: .8),
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),

@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'railway_api_client.dart';
 
 class RailwaySyncService {
-  RailwaySyncService({required RailwayApiClient api}) : _api = api;
+  RailwaySyncService({required this._api});
 
   final RailwayApiClient _api;
 

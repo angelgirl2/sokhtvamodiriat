@@ -23,7 +23,7 @@ class NotificationHelper {
     try {
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
       const initSettings = InitializationSettings(android: androidInit);
-      await _plugin.initialize(initSettings);
+      await _plugin.initialize(settings: initSettings);
 
       final androidImpl = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
@@ -61,10 +61,10 @@ class NotificationHelper {
         ),
       );
       await _plugin.show(
-        notificationId ?? (DateTime.now().millisecondsSinceEpoch % 10000),
-        '🚗 یادآور خودرو: $title',
-        message,
-        details,
+        id: notificationId ?? (DateTime.now().millisecondsSinceEpoch % 10000),
+        title: '🚗 یادآور خودرو: $title',
+        body: message,
+        notificationDetails: details,
       );
     } catch (e) {
       debugPrint('NotificationHelper could not show notification: $e');

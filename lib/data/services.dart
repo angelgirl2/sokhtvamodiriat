@@ -220,6 +220,32 @@ class AppRepository {
   Future<int> addRequest(ServiceRequest r) => db.insertRequest(r);
   Future<void> updateRequest(ServiceRequest r) => db.updateRequest(r);
   Future<void> deleteRequest(int id) => db.deleteRequest(id);
+  Future<void> updateRequestStatus({
+    required int requestId,
+    required String? baleMessageId,
+    required String status,
+  }) async {
+    ServiceRequest? current;
+    for (final item in await db.requests()) {
+      if (item.id == requestId) {
+        current = item;
+        break;
+      }
+    }
+    if (current == null) return;
+    await db.updateRequest(
+      current.copyWith(
+        status: status,
+        baleMessageId: baleMessageId,
+        updatedDateMillis: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+    await railway.updateRequestStatus(
+      requestId: requestId,
+      baleMessageId: baleMessageId ?? current.baleMessageId,
+      status: status,
+    );
+  }
   Future<int> addInquiry(InquiryRecord i) => db.insertInquiry(i);
   Future<void> updateInquiry(InquiryRecord i) => db.updateInquiry(i);
   Future<void> deleteInquiry(int id) => db.deleteInquiry(id);

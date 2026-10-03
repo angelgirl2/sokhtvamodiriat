@@ -1,0 +1,8 @@
+{
+  "project": "SookhtMan",
+  "version": "2.0.0",
+  "framework": "Flutter",
+  "androidApplicationId": "com.angelgirlbrand.modiratsokhtandestelam",
+  "railwayBaseUrl": "https://sokhtvamodiriat-production.up.railway.app",
+  "preservedOriginalProject": "legacy_android_original/"
+}

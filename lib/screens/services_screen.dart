@@ -79,7 +79,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
         const SizedBox(height: 18),
         _hero(context),
         const SizedBox(height: 16),
-        SectionTitle(title: 'خدمات سریع'),
+        const SectionTitle(title: 'خدمات سریع'),
         const SizedBox(height: 10),
         GridView.count(
           shrinkWrap: true,
@@ -139,7 +139,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: filters.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 7),
+            separatorBuilder: (_, _) => const SizedBox(width: 7),
             itemBuilder: (context, index) {
               final item = filters[index];
               return ChoiceChip(
@@ -203,8 +203,8 @@ class _ServicesScreenState extends State<ServicesScreen> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(.14),
-              AppTheme.purple.withOpacity(.10),
+              Theme.of(context).colorScheme.primary.withValues(alpha: .14),
+              AppTheme.purple.withValues(alpha: .10),
             ],
           ),
           borderRadius: BorderRadius.circular(22),
@@ -215,7 +215,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
               width: 58,
               height: 58,
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(.14),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: .14),
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.support_agent_rounded, color: Theme.of(context).colorScheme.primary, size: 30),
@@ -267,7 +267,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(.12),
+                  color: color.withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Icon(icon, color: color),
@@ -358,7 +358,7 @@ class _ServicesScreenState extends State<ServicesScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(.10),
+        color: color.withValues(alpha: .10),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -444,7 +444,7 @@ class _ServiceButton extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(.12),
+                  color: color.withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(13),
                 ),
                 child: Icon(icon, color: color),
@@ -569,7 +569,7 @@ class _ServiceFormSheetState extends State<_ServiceFormSheet> {
                     width: 42,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(.3),
+                      color: Colors.grey.withValues(alpha: .3),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),

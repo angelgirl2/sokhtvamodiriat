@@ -1,4 +1,4 @@
-import 'dart:ui';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -17,18 +17,18 @@ Future<void> showAppSheet({
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withOpacity(.35),
+    barrierColor: Colors.black.withValues(alpha: .35),
     builder: (context) => Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: ui.TextDirection.rtl,
       child: Padding(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: Container(
           constraints: const BoxConstraints(maxHeight: 0.92 * 900),
           padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withOpacity(.97),
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: .97),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-            border: Border.all(color: Colors.white.withOpacity(.15)),
+            border: Border.all(color: Colors.white.withValues(alpha: .15)),
           ),
           child: SingleChildScrollView(
             child: Column(
@@ -38,7 +38,7 @@ Future<void> showAppSheet({
                   width: 42,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(.16),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .16),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -78,7 +78,7 @@ class AppBlur extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+        filter: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
         child: child,
       ),
     );

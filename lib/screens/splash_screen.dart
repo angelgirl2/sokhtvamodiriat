@@ -53,8 +53,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         ),
         child: Stack(
           children: [
-            Positioned(top: -80, right: -50, child: _blob(220, AppTheme.skyBlue.withOpacity(.15))),
-            Positioned(bottom: -100, left: -70, child: _blob(260, AppTheme.purple.withOpacity(.12))),
+            Positioned(top: -80, right: -50, child: _blob(220, AppTheme.skyBlue.withValues(alpha: .15))),
+            Positioned(bottom: -100, left: -70, child: _blob(260, AppTheme.purple.withValues(alpha: .12))),
             Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

@@ -1,5 +1,4 @@
-import 'dart:ui';
-
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class AppTheme {
@@ -34,14 +33,14 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white.withOpacity(.75),
+        fillColor: Colors.white.withValues(alpha: .75),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: Colors.black.withOpacity(.06)),
+          borderSide: BorderSide(color: Colors.black.withValues(alpha: .06)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
@@ -50,7 +49,7 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: Colors.white.withOpacity(.82),
+        color: Colors.white.withValues(alpha: .82),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
       ),
     );
@@ -79,14 +78,14 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white.withOpacity(.06),
+        fillColor: Colors.white.withValues(alpha: .06),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide(color: Colors.white.withOpacity(.08)),
+          borderSide: BorderSide(color: Colors.white.withValues(alpha: .08)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
@@ -95,7 +94,7 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: const Color(0xFF151E26).withOpacity(.92),
+        color: const Color(0xFF151E26).withValues(alpha: .92),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
       ),
     );
@@ -146,12 +145,12 @@ class _GlassBoxPainter extends BoxPainter {
   void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
     final rect = offset & (configuration.size ?? Size.zero);
     final rrect = RRect.fromRectAndRadius(rect, Radius.circular(radius));
-    final fill = Paint()..color = color ?? Colors.white.withOpacity(.18);
+    final fill = Paint()..color = color ?? Colors.white.withValues(alpha: .18);
     canvas.drawRRect(rrect, fill);
     final border = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1
-      ..color = borderColor ?? Colors.white.withOpacity(.24);
+      ..color = borderColor ?? Colors.white.withValues(alpha: .24);
     canvas.drawRRect(rrect, border);
   }
 }

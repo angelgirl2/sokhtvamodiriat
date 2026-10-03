@@ -28,11 +28,11 @@ class GlassBottomNav extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: Theme.of(context).brightness == Brightness.dark
-                  ? const Color(0xFF15212B).withOpacity(.78)
-                  : Colors.white.withOpacity(.70),
+                  ? const Color(0xFF15212B).withValues(alpha: .78)
+                  : Colors.white.withValues(alpha: .70),
               borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.white.withOpacity(.32)),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(.10), blurRadius: 24, offset: const Offset(0, 10))],
+              border: Border.all(color: Colors.white.withValues(alpha: .32)),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .10), blurRadius: 24, offset: const Offset(0, 10))],
             ),
             child: SafeArea(
               top: false,
@@ -45,14 +45,14 @@ class GlassBottomNav extends StatelessWidget {
                     return Expanded(
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () { controller.tab = index; controller.notifyListeners(); },
+                        onTap: () { controller.tab = index; controller.refresh(); },
                         child: AnimatedContainer(
                           duration: AppMotion.fast,
                           curve: AppMotion.curve,
                           margin: const EdgeInsets.symmetric(horizontal: 3),
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            color: selected ? Theme.of(context).colorScheme.primary.withOpacity(.12) : Colors.transparent,
+                            color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: .12) : Colors.transparent,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: TweenAnimationBuilder<double>(
@@ -62,11 +62,11 @@ class GlassBottomNav extends StatelessWidget {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(item.$1, size: 21, color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(.72)),
+                                Icon(item.$1, size: 21, color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: .72)),
                                 const SizedBox(height: 4),
                                 Text(item.$2, style: TextStyle(fontSize: 10.5, fontWeight: selected ? FontWeight.w900 : FontWeight.w600, color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant)),
                                 const SizedBox(height: 2),
-                                AnimatedContainer(duration: AppMotion.fast, width: selected ? 5 : 0, height: selected ? 5 : 0, decoration: BoxDecoration(color: AppTheme.skyBlue, shape: BoxShape.circle)),
+                                AnimatedContainer(duration: AppMotion.fast, width: selected ? 5 : 0, height: selected ? 5 : 0, decoration: const BoxDecoration(color: AppTheme.skyBlue, shape: BoxShape.circle)),
                               ],
                             ),
                           ),

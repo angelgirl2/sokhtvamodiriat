@@ -10,8 +10,8 @@ import 'railway_api_client.dart';
 /// the secret and talks to Bale from the server side.
 class BaleBotService {
   BaleBotService({
-    required RailwayApiClient api,
-  }) : _api = api;
+    required this._api,
+  });
 
   final RailwayApiClient _api;
 

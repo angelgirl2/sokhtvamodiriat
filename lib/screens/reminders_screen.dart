@@ -96,7 +96,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 2),
         padding: const EdgeInsets.symmetric(vertical: 8),
         decoration: BoxDecoration(
-          color: active ? colors.primary.withOpacity(.11) : Colors.transparent,
+          color: active ? colors.primary.withValues(alpha: .11) : Colors.transparent,
           borderRadius: BorderRadius.circular(17),
         ),
         child: Column(
@@ -162,7 +162,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: AppTheme.purple.withOpacity(.10),
+                        color: AppTheme.purple.withValues(alpha: .10),
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: const Icon(
@@ -270,7 +270,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(.10),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: .10),
                           borderRadius: BorderRadius.circular(13),
                         ),
                         child: Icon(
@@ -412,7 +412,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppTheme.turquoise.withOpacity(.11),
+                  color: AppTheme.turquoise.withValues(alpha: .11),
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: const Icon(Icons.fact_check_rounded, color: AppTheme.turquoise),
@@ -450,7 +450,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: (expired ? AppTheme.red : AppTheme.turquoise).withOpacity(.08),
+              color: (expired ? AppTheme.red : AppTheme.turquoise).withValues(alpha: .08),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
@@ -654,7 +654,7 @@ Future<ServiceReminder?> _reminderForm(
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
-                    color: Theme.of(ctx).colorScheme.outline.withOpacity(.35),
+                    color: Theme.of(ctx).colorScheme.outline.withValues(alpha: .35),
                   ),
                 ),
                 leading: const Icon(Icons.event_outlined),

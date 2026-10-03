@@ -69,7 +69,7 @@ class SookhtManApp extends StatelessWidget {
                     onDone: () {
                       controller.showSplash = false;
                       if (controller.security.isPinEnabled) controller.unlocked = false;
-                      controller.notifyListeners();
+                      controller.refresh();
                     },
                   )
                 : (!controller.unlocked

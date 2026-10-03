@@ -21,7 +21,7 @@ class GlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(dark ? .18 : .07),
+            color: Colors.black.withValues(alpha: dark ? .18 : .07),
             blurRadius: 28,
             offset: const Offset(0, 12),
           ),
@@ -34,9 +34,9 @@ class GlassCard extends StatelessWidget {
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              color: (dark ? const Color(0xFF172129) : Colors.white).withOpacity(opacity),
+              color: (dark ? const Color(0xFF172129) : Colors.white).withValues(alpha: opacity),
               borderRadius: BorderRadius.circular(borderRadius),
-              border: Border.all(color: Colors.white.withOpacity(dark ? .10 : .55)),
+              border: Border.all(color: Colors.white.withValues(alpha: dark ? .10 : .55)),
             ),
             child: child,
           ),
@@ -137,7 +137,7 @@ class StatTile extends StatelessWidget {
               Container(
                 width: 42,
                 height: 42,
-                decoration: BoxDecoration(color: color.withOpacity(.14), borderRadius: BorderRadius.circular(15)),
+                decoration: BoxDecoration(color: color.withValues(alpha: .14), borderRadius: BorderRadius.circular(15)),
                 child: Icon(icon, color: color),
               ),
               const SizedBox(height: 13),
@@ -160,7 +160,7 @@ class SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Row(
         children: [
           Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900))),
-          if (action != null) action!,
+          ?action,
         ],
       );
 }

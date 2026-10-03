@@ -110,7 +110,7 @@ class InquiryScreen extends StatelessWidget {
                 width: 42,
                 height: 42,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: .1),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
@@ -186,7 +186,7 @@ class InquiryScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(.1),
+        color: color.withValues(alpha: .1),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -260,7 +260,7 @@ class _InquiryTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(.12),
+                  color: color.withValues(alpha: .12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(icon, color: color),
@@ -368,7 +368,7 @@ class _InquirySheetState extends State<_InquirySheet> {
                     width: 42,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(.28),
+                      color: Colors.grey.withValues(alpha: .28),
                       borderRadius: BorderRadius.circular(4),
                     ),
                   ),
@@ -401,19 +401,23 @@ class _InquirySheetState extends State<_InquirySheet> {
                 field('address', 'آدرس', lines: 3),
                 field('amount', 'مبلغ برآوردی (تومان)', keyboard: TextInputType.number),
                 const Text('روش رسیدگی', style: TextStyle(fontWeight: FontWeight.w800)),
-                RadioListTile<String>(
-                  value: 'ADMIN_REVIEW',
+                RadioGroup<String>(
                   groupValue: method,
                   onChanged: (value) => setState(() => method = value ?? method),
-                  title: const Text('بررسی و تسویه توسط کارشناس'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                RadioListTile<String>(
-                  value: 'DIRECT_PAYMENT',
-                  groupValue: method,
-                  onChanged: (value) => setState(() => method = value ?? method),
-                  title: const Text('پرداخت مستقیم (شبیه‌سازی)'),
-                  contentPadding: EdgeInsets.zero,
+                  child: const Column(
+                    children: [
+                      RadioListTile<String>(
+                        value: 'ADMIN_REVIEW',
+                        title: Text('بررسی و تسویه توسط کارشناس'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      RadioListTile<String>(
+                        value: 'DIRECT_PAYMENT',
+                        title: Text('پرداخت مستقیم (شبیه‌سازی)'),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 8),
                 PrimaryButton(

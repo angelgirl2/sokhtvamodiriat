@@ -41,7 +41,7 @@ class FuelScreen extends StatelessWidget {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: controller.vehicles.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   final item = controller.vehicles[index];
                   final selected = item.id == vehicle.id;
@@ -134,7 +134,7 @@ class FuelScreen extends StatelessWidget {
             width: 68,
             height: 68,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(.12),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: .12),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -257,7 +257,7 @@ class FuelScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(.09),
+        color: color.withValues(alpha: .09),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
@@ -298,7 +298,7 @@ class FuelScreen extends StatelessWidget {
             text: 'یادآور سرویس',
             onTap: () {
               controller.tab = 3;
-              controller.notifyListeners();
+              controller.refresh();
             },
           ),
         ),
@@ -310,7 +310,7 @@ class FuelScreen extends StatelessWidget {
             text: 'درخواست بیمه',
             onTap: () {
               controller.tab = 1;
-              controller.notifyListeners();
+              controller.refresh();
             },
           ),
         ),
@@ -363,7 +363,7 @@ class FuelScreen extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: AppTheme.skyBlue.withOpacity(.12),
+                color: AppTheme.skyBlue.withValues(alpha: .12),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: const Icon(Icons.local_gas_station_rounded, color: AppTheme.skyBlue),
@@ -472,9 +472,9 @@ class _Action extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(.09),
+          color: color.withValues(alpha: .09),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(.12)),
+          border: Border.all(color: color.withValues(alpha: .12)),
         ),
         child: Column(
           children: [
@@ -550,7 +550,7 @@ class _FuelChart extends StatelessWidget {
             dotData: const FlDotData(show: true),
             belowBarData: BarAreaData(
               show: true,
-              color: Theme.of(context).colorScheme.primary.withOpacity(.10),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: .10),
             ),
             spots: [
               for (int index = 0; index < data.length; index++)

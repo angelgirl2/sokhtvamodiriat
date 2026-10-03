@@ -48,6 +48,8 @@ class Vehicle {
           ? inspectionExpiryMillis
           : createdAt + 365 * 24 * 3600 * 1000;
 
+  int get effectiveInspectionExpiryMillis => effectiveInspectionExpiry;
+
   Map<String, Object?> toMap() => {
         'id': id,
         'title': title,
@@ -104,7 +106,7 @@ class Vehicle {
     String? inspectionCenter,
     int? inspectionNotifyDaysBefore,
   }) => Vehicle(
-        id: id ?? this.id,
+        id: id ?? id,
         title: title ?? this.title,
         plateFirst2: plateFirst2 ?? this.plateFirst2,
         plateLetter: plateLetter ?? this.plateLetter,
@@ -286,6 +288,9 @@ class ServiceHistory {
 }
 
 class ServiceRequest {
+  static const String statusPending = 'در انتظار تایید مدیر';
+  static const String statusApproved = 'تایید شد و برای شما اطلاعات ارسال میگردد';
+
   final int? id;
   final String requestType;
   final String title;
@@ -386,8 +391,14 @@ class ServiceRequest {
         updatedDateMillis: (m['updatedDateMillis'] as num?)?.toInt() ?? 0,
       );
 
-  ServiceRequest copyWith({String? status, String? baleMessageId}) => ServiceRequest(
-        id: id,
+  ServiceRequest copyWith({
+    int? id,
+    String? status,
+    String? baleMessageId,
+    int? submissionDateMillis,
+    int? updatedDateMillis,
+  }) => ServiceRequest(
+        id: id ?? id,
         requestType: requestType,
         title: title,
         fullName: fullName,
@@ -407,8 +418,8 @@ class ServiceRequest {
         additionalDetails: additionalDetails,
         status: status ?? this.status,
         baleMessageId: baleMessageId ?? this.baleMessageId,
-        submissionDateMillis: submissionDateMillis,
-        updatedDateMillis: DateTime.now().millisecondsSinceEpoch,
+        submissionDateMillis: submissionDateMillis ?? this.submissionDateMillis,
+        updatedDateMillis: updatedDateMillis ?? DateTime.now().millisecondsSinceEpoch,
       );
 }
 
