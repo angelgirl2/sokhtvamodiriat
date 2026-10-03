@@ -1,5 +1,3 @@
-import java.util.Properties
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -7,24 +5,16 @@ plugins {
 }
 
 android {
-    namespace = "com.angelgirlbrand.kalantar"
-    compileSdk = 36
+    namespace = "com.angelgirlbrand.modiratsokhtandestelam"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
 
     defaultConfig {
-        applicationId = "com.angelgirlbrand.kalantar"
-        minSdk = flutter.minSdkVersion
-        targetSdk = 36
-
-        versionCode = 1
-        versionName = "1.0.0"
-
-        ndk {
-            abiFilters += listOf(
-                "arm64-v8a",
-                "armeabi-v7a",
-                "x86_64"
-            )
-        }
+        applicationId = "com.angelgirlbrand.modiratsokhtandestelam"
+        minSdk = 24
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
     compileOptions {
@@ -36,33 +26,9 @@ android {
         jvmTarget = "17"
     }
 
-    signingConfigs {
-        create("release") {
-            val keystorePropertiesFile = rootProject.file("key.properties")
-
-            if (keystorePropertiesFile.exists()) {
-                val props = Properties()
-
-                keystorePropertiesFile.inputStream().use {
-                    props.load(it)
-                }
-
-                keyAlias = props.getProperty("keyAlias")
-                keyPassword = props.getProperty("keyPassword")
-                storePassword = props.getProperty("storePassword")
-
-                val storeFilePath = props.getProperty("storeFile")
-
-                if (!storeFilePath.isNullOrBlank()) {
-                    storeFile = file(storeFilePath)
-                }
-            }
-        }
-    }
-
     buildTypes {
-        getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
+        release {
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             isShrinkResources = false
         }

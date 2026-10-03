@@ -5,12 +5,12 @@ plugins {
 }
 
 android {
-    namespace "com.angelgirlbrand.sokhtman"
+    namespace "com.angelgirlbrand.modiratsokhtandestelam"
     compileSdk flutter.compileSdkVersion
     ndkVersion "28.2.13676358"
 
     defaultConfig {
-        applicationId "com.angelgirlbrand.sokhtman"
+        applicationId "com.angelgirlbrand.modiratsokhtandestelam"
         minSdk 24
         targetSdk flutter.targetSdkVersion
         versionCode flutter.versionCode

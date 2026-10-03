@@ -1,29 +1,23 @@
-/// Data models mirroring the original Room entities 1:1.
-///
-/// Naming, default values and status constants are kept identical to the
-/// Kotlin entities so the port stays behaviour-compatible.
-library;
-
 class Vehicle {
-  final int id;
-  final String title;
-  final String plateFirst2;
-  final String plateLetter;
-  final String plateLast3;
-  final String plateCityCode;
-  final String fuelType;
-  final double tankCapacity;
-  final int currentOdometer;
-  final int insuranceExpiryMillis;
-  final String insuranceCompany;
-  final String insuranceType;
-  final int inspectionExpiryMillis;
-  final String inspectionCenter;
-  final int inspectionNotifyDaysBefore;
-  final int createdAt;
+  final int? id;
+  String title;
+  String plateFirst2;
+  String plateLetter;
+  String plateLast3;
+  String plateCityCode;
+  String fuelType;
+  double tankCapacity;
+  int currentOdometer;
+  int insuranceExpiryMillis;
+  String insuranceCompany;
+  String insuranceType;
+  int inspectionExpiryMillis;
+  String inspectionCenter;
+  int inspectionNotifyDaysBefore;
+  int createdAt;
 
-  const Vehicle({
-    this.id = 0,
+  Vehicle({
+    this.id,
     required this.title,
     required this.plateFirst2,
     required this.plateLetter,
@@ -38,21 +32,60 @@ class Vehicle {
     this.inspectionExpiryMillis = 0,
     this.inspectionCenter = '',
     this.inspectionNotifyDaysBefore = 15,
-    this.createdAt = 0,
-  });
+    int? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now().millisecondsSinceEpoch;
 
-  /// `ایران 11 | 345 ب 12`
-  String get formattedPlate => 'ایران $plateCityCode | $plateLast3 $plateLetter $plateFirst2';
+  String get formattedPlate =>
+      'ایران $plateCityCode | $plateLast3 $plateLetter $plateFirst2';
 
-  int get effectiveInsuranceExpiryMillis => insuranceExpiryMillis > 0
-      ? insuranceExpiryMillis
-      : (createdAt > 0 ? createdAt : DateTime.now().millisecondsSinceEpoch) +
-          const Duration(days: 365).inMilliseconds;
+  int get effectiveInsuranceExpiry =>
+      insuranceExpiryMillis > 0
+          ? insuranceExpiryMillis
+          : createdAt + 365 * 24 * 3600 * 1000;
 
-  int get effectiveInspectionExpiryMillis => inspectionExpiryMillis > 0
-      ? inspectionExpiryMillis
-      : (createdAt > 0 ? createdAt : DateTime.now().millisecondsSinceEpoch) +
-          const Duration(days: 365).inMilliseconds;
+  int get effectiveInspectionExpiry =>
+      inspectionExpiryMillis > 0
+          ? inspectionExpiryMillis
+          : createdAt + 365 * 24 * 3600 * 1000;
+
+  Map<String, Object?> toMap() => {
+        'id': id,
+        'title': title,
+        'plateFirst2': plateFirst2,
+        'plateLetter': plateLetter,
+        'plateLast3': plateLast3,
+        'plateCityCode': plateCityCode,
+        'fuelType': fuelType,
+        'tankCapacity': tankCapacity,
+        'currentOdometer': currentOdometer,
+        'insuranceExpiryMillis': insuranceExpiryMillis,
+        'insuranceCompany': insuranceCompany,
+        'insuranceType': insuranceType,
+        'inspectionExpiryMillis': inspectionExpiryMillis,
+        'inspectionCenter': inspectionCenter,
+        'inspectionNotifyDaysBefore': inspectionNotifyDaysBefore,
+        'createdAt': createdAt,
+      };
+
+  factory Vehicle.fromMap(Map<String, Object?> m) => Vehicle(
+        id: m['id'] as int?,
+        title: m['title'] as String,
+        plateFirst2: m['plateFirst2'] as String,
+        plateLetter: m['plateLetter'] as String,
+        plateLast3: m['plateLast3'] as String,
+        plateCityCode: m['plateCityCode'] as String,
+        fuelType: m['fuelType'] as String,
+        tankCapacity: (m['tankCapacity'] as num).toDouble(),
+        currentOdometer: (m['currentOdometer'] as num).toInt(),
+        insuranceExpiryMillis: (m['insuranceExpiryMillis'] as num?)?.toInt() ?? 0,
+        insuranceCompany: m['insuranceCompany'] as String? ?? 'بیمه ایران',
+        insuranceType: m['insuranceType'] as String? ?? 'بیمه شخص ثالث',
+        inspectionExpiryMillis: (m['inspectionExpiryMillis'] as num?)?.toInt() ?? 0,
+        inspectionCenter: m['inspectionCenter'] as String? ?? '',
+        inspectionNotifyDaysBefore:
+            (m['inspectionNotifyDaysBefore'] as num?)?.toInt() ?? 15,
+        createdAt: (m['createdAt'] as num?)?.toInt(),
+      );
 
   Vehicle copyWith({
     int? id,
@@ -70,69 +103,31 @@ class Vehicle {
     int? inspectionExpiryMillis,
     String? inspectionCenter,
     int? inspectionNotifyDaysBefore,
-    int? createdAt,
-  }) {
-    return Vehicle(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      plateFirst2: plateFirst2 ?? this.plateFirst2,
-      plateLetter: plateLetter ?? this.plateLetter,
-      plateLast3: plateLast3 ?? this.plateLast3,
-      plateCityCode: plateCityCode ?? this.plateCityCode,
-      fuelType: fuelType ?? this.fuelType,
-      tankCapacity: tankCapacity ?? this.tankCapacity,
-      currentOdometer: currentOdometer ?? this.currentOdometer,
-      insuranceExpiryMillis: insuranceExpiryMillis ?? this.insuranceExpiryMillis,
-      insuranceCompany: insuranceCompany ?? this.insuranceCompany,
-      insuranceType: insuranceType ?? this.insuranceType,
-      inspectionExpiryMillis: inspectionExpiryMillis ?? this.inspectionExpiryMillis,
-      inspectionCenter: inspectionCenter ?? this.inspectionCenter,
-      inspectionNotifyDaysBefore: inspectionNotifyDaysBefore ?? this.inspectionNotifyDaysBefore,
-      createdAt: createdAt ?? this.createdAt,
-    );
-  }
-
-  Map<String, Object?> toMap() => {
-        'id': id == 0 ? null : id,
-        'title': title,
-        'plateFirst2': plateFirst2,
-        'plateLetter': plateLetter,
-        'plateLast3': plateLast3,
-        'plateCityCode': plateCityCode,
-        'fuelType': fuelType,
-        'tankCapacity': tankCapacity,
-        'currentOdometer': currentOdometer,
-        'insuranceExpiryMillis': insuranceExpiryMillis,
-        'insuranceCompany': insuranceCompany,
-        'insuranceType': insuranceType,
-        'inspectionExpiryMillis': inspectionExpiryMillis,
-        'inspectionCenter': inspectionCenter,
-        'inspectionNotifyDaysBefore': inspectionNotifyDaysBefore,
-        'createdAt': createdAt == 0 ? DateTime.now().millisecondsSinceEpoch : createdAt,
-      };
-
-  factory Vehicle.fromMap(Map<String, Object?> map) => Vehicle(
-        id: (map['id'] as int?) ?? 0,
-        title: (map['title'] as String?) ?? '',
-        plateFirst2: (map['plateFirst2'] as String?) ?? '',
-        plateLetter: (map['plateLetter'] as String?) ?? '',
-        plateLast3: (map['plateLast3'] as String?) ?? '',
-        plateCityCode: (map['plateCityCode'] as String?) ?? '',
-        fuelType: (map['fuelType'] as String?) ?? 'بنزین معمولی',
-        tankCapacity: ((map['tankCapacity'] as num?) ?? 45).toDouble(),
-        currentOdometer: (map['currentOdometer'] as int?) ?? 0,
-        insuranceExpiryMillis: (map['insuranceExpiryMillis'] as int?) ?? 0,
-        insuranceCompany: (map['insuranceCompany'] as String?) ?? 'بیمه ایران',
-        insuranceType: (map['insuranceType'] as String?) ?? 'بیمه شخص ثالث',
-        inspectionExpiryMillis: (map['inspectionExpiryMillis'] as int?) ?? 0,
-        inspectionCenter: (map['inspectionCenter'] as String?) ?? '',
-        inspectionNotifyDaysBefore: (map['inspectionNotifyDaysBefore'] as int?) ?? 15,
-        createdAt: (map['createdAt'] as int?) ?? 0,
+  }) => Vehicle(
+        id: id ?? this.id,
+        title: title ?? this.title,
+        plateFirst2: plateFirst2 ?? this.plateFirst2,
+        plateLetter: plateLetter ?? this.plateLetter,
+        plateLast3: plateLast3 ?? this.plateLast3,
+        plateCityCode: plateCityCode ?? this.plateCityCode,
+        fuelType: fuelType ?? this.fuelType,
+        tankCapacity: tankCapacity ?? this.tankCapacity,
+        currentOdometer: currentOdometer ?? this.currentOdometer,
+        insuranceExpiryMillis:
+            insuranceExpiryMillis ?? this.insuranceExpiryMillis,
+        insuranceCompany: insuranceCompany ?? this.insuranceCompany,
+        insuranceType: insuranceType ?? this.insuranceType,
+        inspectionExpiryMillis:
+            inspectionExpiryMillis ?? this.inspectionExpiryMillis,
+        inspectionCenter: inspectionCenter ?? this.inspectionCenter,
+        inspectionNotifyDaysBefore:
+            inspectionNotifyDaysBefore ?? this.inspectionNotifyDaysBefore,
+        createdAt: createdAt,
       );
 }
 
 class FuelLog {
-  final int id;
+  final int? id;
   final int vehicleId;
   final int dateMillis;
   final int odometer;
@@ -143,8 +138,8 @@ class FuelLog {
   final bool isFullTank;
   final String notes;
 
-  const FuelLog({
-    this.id = 0,
+  FuelLog({
+    this.id,
     required this.vehicleId,
     required this.dateMillis,
     required this.odometer,
@@ -157,7 +152,7 @@ class FuelLog {
   });
 
   Map<String, Object?> toMap() => {
-        'id': id == 0 ? null : id,
+        'id': id,
         'vehicleId': vehicleId,
         'dateMillis': dateMillis,
         'odometer': odometer,
@@ -169,22 +164,22 @@ class FuelLog {
         'notes': notes,
       };
 
-  factory FuelLog.fromMap(Map<String, Object?> map) => FuelLog(
-        id: (map['id'] as int?) ?? 0,
-        vehicleId: (map['vehicleId'] as int?) ?? 0,
-        dateMillis: (map['dateMillis'] as int?) ?? 0,
-        odometer: (map['odometer'] as int?) ?? 0,
-        liters: ((map['liters'] as num?) ?? 0).toDouble(),
-        pricePerLiter: (map['pricePerLiter'] as int?) ?? 0,
-        totalCost: (map['totalCost'] as int?) ?? 0,
-        stationName: (map['stationName'] as String?) ?? '',
-        isFullTank: ((map['isFullTank'] as int?) ?? 1) == 1,
-        notes: (map['notes'] as String?) ?? '',
+  factory FuelLog.fromMap(Map<String, Object?> m) => FuelLog(
+        id: m['id'] as int?,
+        vehicleId: (m['vehicleId'] as num).toInt(),
+        dateMillis: (m['dateMillis'] as num).toInt(),
+        odometer: (m['odometer'] as num).toInt(),
+        liters: (m['liters'] as num).toDouble(),
+        pricePerLiter: (m['pricePerLiter'] as num).toInt(),
+        totalCost: (m['totalCost'] as num).toInt(),
+        stationName: m['stationName'] as String? ?? '',
+        isFullTank: (m['isFullTank'] as num?)?.toInt() == 1,
+        notes: m['notes'] as String? ?? '',
       );
 }
 
 class ServiceReminder {
-  final int id;
+  final int? id;
   final int vehicleId;
   final String serviceType;
   final int targetDateMillis;
@@ -193,8 +188,8 @@ class ServiceReminder {
   final bool isCompleted;
   final bool notified;
 
-  const ServiceReminder({
-    this.id = 0,
+  ServiceReminder({
+    this.id,
     required this.vehicleId,
     required this.serviceType,
     required this.targetDateMillis,
@@ -203,6 +198,28 @@ class ServiceReminder {
     this.isCompleted = false,
     this.notified = false,
   });
+
+  Map<String, Object?> toMap() => {
+        'id': id,
+        'vehicleId': vehicleId,
+        'serviceType': serviceType,
+        'targetDateMillis': targetDateMillis,
+        'targetOdometer': targetOdometer,
+        'notes': notes,
+        'isCompleted': isCompleted ? 1 : 0,
+        'notified': notified ? 1 : 0,
+      };
+
+  factory ServiceReminder.fromMap(Map<String, Object?> m) => ServiceReminder(
+        id: m['id'] as int?,
+        vehicleId: (m['vehicleId'] as num).toInt(),
+        serviceType: m['serviceType'] as String,
+        targetDateMillis: (m['targetDateMillis'] as num).toInt(),
+        targetOdometer: (m['targetOdometer'] as num).toInt(),
+        notes: m['notes'] as String? ?? '',
+        isCompleted: (m['isCompleted'] as num?)?.toInt() == 1,
+        notified: (m['notified'] as num?)?.toInt() == 1,
+      );
 
   ServiceReminder copyWith({bool? isCompleted, bool? notified}) => ServiceReminder(
         id: id,
@@ -214,32 +231,10 @@ class ServiceReminder {
         isCompleted: isCompleted ?? this.isCompleted,
         notified: notified ?? this.notified,
       );
-
-  Map<String, Object?> toMap() => {
-        'id': id == 0 ? null : id,
-        'vehicleId': vehicleId,
-        'serviceType': serviceType,
-        'targetDateMillis': targetDateMillis,
-        'targetOdometer': targetOdometer,
-        'notes': notes,
-        'isCompleted': isCompleted ? 1 : 0,
-        'notified': notified ? 1 : 0,
-      };
-
-  factory ServiceReminder.fromMap(Map<String, Object?> map) => ServiceReminder(
-        id: (map['id'] as int?) ?? 0,
-        vehicleId: (map['vehicleId'] as int?) ?? 0,
-        serviceType: (map['serviceType'] as String?) ?? '',
-        targetDateMillis: (map['targetDateMillis'] as int?) ?? 0,
-        targetOdometer: (map['targetOdometer'] as int?) ?? 0,
-        notes: (map['notes'] as String?) ?? '',
-        isCompleted: ((map['isCompleted'] as int?) ?? 0) == 1,
-        notified: ((map['notified'] as int?) ?? 0) == 1,
-      );
 }
 
 class ServiceHistory {
-  final int id;
+  final int? id;
   final int vehicleId;
   final String serviceType;
   final String itemsChanged;
@@ -250,13 +245,13 @@ class ServiceHistory {
   final String mechanicOrShop;
   final String notes;
 
-  const ServiceHistory({
-    this.id = 0,
+  ServiceHistory({
+    this.id,
     required this.vehicleId,
     required this.serviceType,
     required this.itemsChanged,
     required this.odometer,
-    this.nextDueOdometer = 0,
+    required this.nextDueOdometer,
     required this.dateMillis,
     required this.cost,
     this.mechanicOrShop = '',
@@ -264,7 +259,7 @@ class ServiceHistory {
   });
 
   Map<String, Object?> toMap() => {
-        'id': id == 0 ? null : id,
+        'id': id,
         'vehicleId': vehicleId,
         'serviceType': serviceType,
         'itemsChanged': itemsChanged,
@@ -276,26 +271,22 @@ class ServiceHistory {
         'notes': notes,
       };
 
-  factory ServiceHistory.fromMap(Map<String, Object?> map) => ServiceHistory(
-        id: (map['id'] as int?) ?? 0,
-        vehicleId: (map['vehicleId'] as int?) ?? 0,
-        serviceType: (map['serviceType'] as String?) ?? '',
-        itemsChanged: (map['itemsChanged'] as String?) ?? '',
-        odometer: (map['odometer'] as int?) ?? 0,
-        nextDueOdometer: (map['nextDueOdometer'] as int?) ?? 0,
-        dateMillis: (map['dateMillis'] as int?) ?? 0,
-        cost: (map['cost'] as int?) ?? 0,
-        mechanicOrShop: (map['mechanicOrShop'] as String?) ?? '',
-        notes: (map['notes'] as String?) ?? '',
+  factory ServiceHistory.fromMap(Map<String, Object?> m) => ServiceHistory(
+        id: m['id'] as int?,
+        vehicleId: (m['vehicleId'] as num).toInt(),
+        serviceType: m['serviceType'] as String,
+        itemsChanged: m['itemsChanged'] as String? ?? '',
+        odometer: (m['odometer'] as num).toInt(),
+        nextDueOdometer: (m['nextDueOdometer'] as num?)?.toInt() ?? 0,
+        dateMillis: (m['dateMillis'] as num).toInt(),
+        cost: (m['cost'] as num).toInt(),
+        mechanicOrShop: m['mechanicOrShop'] as String? ?? '',
+        notes: m['notes'] as String? ?? '',
       );
 }
 
 class ServiceRequest {
-  static const statusPending = 'در انتظار تایید مدیر';
-  static const statusApproved = 'تایید شد و برای شما اطلاعات ارسال میگردد';
-  static const statusRejected = 'رد شده - نیاز به بررسی مجدد';
-
-  final int id;
+  final int? id;
   final String requestType;
   final String title;
   final String fullName;
@@ -318,10 +309,8 @@ class ServiceRequest {
   final int submissionDateMillis;
   final int updatedDateMillis;
 
-  String get details => additionalDetails;
-
   const ServiceRequest({
-    this.id = 0,
+    this.id,
     required this.requestType,
     required this.title,
     required this.fullName,
@@ -339,13 +328,65 @@ class ServiceRequest {
     this.durationMonths = 12,
     this.discountPercent = 0,
     this.additionalDetails = '',
-    this.status = statusPending,
+    this.status = 'در انتظار تایید مدیر',
     this.baleMessageId = '',
-    this.submissionDateMillis = 0,
-    this.updatedDateMillis = 0,
-  });
+    int? submissionDateMillis,
+    int? updatedDateMillis,
+  })  : submissionDateMillis = submissionDateMillis ?? 0,
+        updatedDateMillis = updatedDateMillis ?? 0;
 
-  ServiceRequest copyWith({String? status, String? baleMessageId, int? updatedDateMillis}) => ServiceRequest(
+  Map<String, Object?> toMap() => {
+        'id': id,
+        'requestType': requestType,
+        'title': title,
+        'fullName': fullName,
+        'nationalCode': nationalCode,
+        'phoneNumber': phoneNumber,
+        'vehiclePlate': vehiclePlate,
+        'vinCode': vinCode,
+        'barcodeNumber': barcodeNumber,
+        'engineNumber': engineNumber,
+        'chassisNumber': chassisNumber,
+        'postalCode': postalCode,
+        'address': address,
+        'insuranceCategory': insuranceCategory,
+        'insuranceCompany': insuranceCompany,
+        'durationMonths': durationMonths,
+        'discountPercent': discountPercent,
+        'additionalDetails': additionalDetails,
+        'status': status,
+        'baleMessageId': baleMessageId,
+        'submissionDateMillis': submissionDateMillis,
+        'updatedDateMillis': updatedDateMillis,
+      };
+
+  factory ServiceRequest.fromMap(Map<String, Object?> m) => ServiceRequest(
+        id: m['id'] as int?,
+        requestType: m['requestType'] as String,
+        title: m['title'] as String,
+        fullName: m['fullName'] as String,
+        nationalCode: m['nationalCode'] as String,
+        phoneNumber: m['phoneNumber'] as String,
+        vehiclePlate: m['vehiclePlate'] as String,
+        vinCode: m['vinCode'] as String? ?? '',
+        barcodeNumber: m['barcodeNumber'] as String? ?? '',
+        engineNumber: m['engineNumber'] as String? ?? '',
+        chassisNumber: m['chassisNumber'] as String? ?? '',
+        postalCode: m['postalCode'] as String? ?? '',
+        address: m['address'] as String? ?? '',
+        insuranceCategory: m['insuranceCategory'] as String? ?? '',
+        insuranceCompany: m['insuranceCompany'] as String? ?? '',
+        durationMonths: (m['durationMonths'] as num?)?.toInt() ?? 12,
+        discountPercent: (m['discountPercent'] as num?)?.toInt() ?? 0,
+        additionalDetails: m['additionalDetails'] as String? ?? '',
+        status: m['status'] as String? ?? 'در انتظار تایید مدیر',
+        baleMessageId: m['baleMessageId'] as String? ?? '',
+        submissionDateMillis:
+            (m['submissionDateMillis'] as num?)?.toInt() ?? 0,
+        updatedDateMillis: (m['updatedDateMillis'] as num?)?.toInt() ?? 0,
+      );
+
+  ServiceRequest copyWith({String? status, String? baleMessageId}) => ServiceRequest(
         id: id,
         requestType: requestType,
         title: title,
@@ -367,64 +408,12 @@ class ServiceRequest {
         status: status ?? this.status,
         baleMessageId: baleMessageId ?? this.baleMessageId,
         submissionDateMillis: submissionDateMillis,
-        updatedDateMillis: updatedDateMillis ?? this.updatedDateMillis,
-      );
-
-  Map<String, Object?> toMap() => {
-        'id': id == 0 ? null : id,
-        'requestType': requestType,
-        'title': title,
-        'fullName': fullName,
-        'nationalCode': nationalCode,
-        'phoneNumber': phoneNumber,
-        'vehiclePlate': vehiclePlate,
-        'vinCode': vinCode,
-        'barcodeNumber': barcodeNumber,
-        'engineNumber': engineNumber,
-        'chassisNumber': chassisNumber,
-        'postalCode': postalCode,
-        'address': address,
-        'insuranceCategory': insuranceCategory,
-        'insuranceCompany': insuranceCompany,
-        'durationMonths': durationMonths,
-        'discountPercent': discountPercent,
-        'additionalDetails': additionalDetails,
-        'status': status,
-        'baleMessageId': baleMessageId,
-        'submissionDateMillis':
-            submissionDateMillis == 0 ? DateTime.now().millisecondsSinceEpoch : submissionDateMillis,
-        'updatedDateMillis':
-            updatedDateMillis == 0 ? DateTime.now().millisecondsSinceEpoch : updatedDateMillis,
-      };
-
-  factory ServiceRequest.fromMap(Map<String, Object?> map) => ServiceRequest(
-        id: (map['id'] as int?) ?? 0,
-        requestType: (map['requestType'] as String?) ?? '',
-        title: (map['title'] as String?) ?? '',
-        fullName: (map['fullName'] as String?) ?? '',
-        nationalCode: (map['nationalCode'] as String?) ?? '',
-        phoneNumber: (map['phoneNumber'] as String?) ?? '',
-        vehiclePlate: (map['vehiclePlate'] as String?) ?? '',
-        vinCode: (map['vinCode'] as String?) ?? '',
-        barcodeNumber: (map['barcodeNumber'] as String?) ?? '',
-        engineNumber: (map['engineNumber'] as String?) ?? '',
-        chassisNumber: (map['chassisNumber'] as String?) ?? '',
-        postalCode: (map['postalCode'] as String?) ?? '',
-        address: (map['address'] as String?) ?? '',
-        insuranceCategory: (map['insuranceCategory'] as String?) ?? '',
-        insuranceCompany: (map['insuranceCompany'] as String?) ?? '',
-        durationMonths: (map['durationMonths'] as int?) ?? 12,
-        discountPercent: (map['discountPercent'] as int?) ?? 0,
-        additionalDetails: (map['additionalDetails'] as String?) ?? '',
-        status: (map['status'] as String?) ?? statusPending,
-        baleMessageId: (map['baleMessageId'] as String?) ?? '',
-        submissionDateMillis: (map['submissionDateMillis'] as int?) ?? 0,
-        updatedDateMillis: (map['updatedDateMillis'] as int?) ?? 0,
+        updatedDateMillis: DateTime.now().millisecondsSinceEpoch,
       );
 }
 
 class InquiryRecord {
-  final int id;
+  final int? id;
   final String inquiryType;
   final String title;
   final String plateNumber;
@@ -445,7 +434,7 @@ class InquiryRecord {
   final int dateMillis;
 
   const InquiryRecord({
-    this.id = 0,
+    this.id,
     required this.inquiryType,
     required this.title,
     required this.plateNumber,
@@ -463,8 +452,52 @@ class InquiryRecord {
     required this.workflowMethod,
     required this.status,
     this.transactionRef = '',
-    this.dateMillis = 0,
-  });
+    int? dateMillis,
+  }) : dateMillis = dateMillis ?? 0;
+
+  Map<String, Object?> toMap() => {
+        'id': id,
+        'inquiryType': inquiryType,
+        'title': title,
+        'plateNumber': plateNumber,
+        'barcodeOrVin': barcodeOrVin,
+        'nationalId': nationalId,
+        'fullName': fullName,
+        'phoneNumber': phoneNumber,
+        'vinCode': vinCode,
+        'barcode': barcode,
+        'engineNumber': engineNumber,
+        'chassisNumber': chassisNumber,
+        'postalCode': postalCode,
+        'address': address,
+        'amount': amount,
+        'workflowMethod': workflowMethod,
+        'status': status,
+        'transactionRef': transactionRef,
+        'dateMillis': dateMillis,
+      };
+
+  factory InquiryRecord.fromMap(Map<String, Object?> m) => InquiryRecord(
+        id: m['id'] as int?,
+        inquiryType: m['inquiryType'] as String,
+        title: m['title'] as String,
+        plateNumber: m['plateNumber'] as String,
+        barcodeOrVin: m['barcodeOrVin'] as String,
+        nationalId: m['nationalId'] as String? ?? '',
+        fullName: m['fullName'] as String? ?? '',
+        phoneNumber: m['phoneNumber'] as String? ?? '',
+        vinCode: m['vinCode'] as String? ?? '',
+        barcode: m['barcode'] as String? ?? '',
+        engineNumber: m['engineNumber'] as String? ?? '',
+        chassisNumber: m['chassisNumber'] as String? ?? '',
+        postalCode: m['postalCode'] as String? ?? '',
+        address: m['address'] as String? ?? '',
+        amount: (m['amount'] as num).toInt(),
+        workflowMethod: m['workflowMethod'] as String,
+        status: m['status'] as String,
+        transactionRef: m['transactionRef'] as String? ?? '',
+        dateMillis: (m['dateMillis'] as num?)?.toInt() ?? 0,
+      );
 
   InquiryRecord copyWith({String? status, String? transactionRef}) => InquiryRecord(
         id: id,
@@ -487,48 +520,36 @@ class InquiryRecord {
         transactionRef: transactionRef ?? this.transactionRef,
         dateMillis: dateMillis,
       );
+}
+
+class QueueItem {
+  final int? id;
+  final String kind;
+  final String payloadJson;
+  final int createdAt;
+  final int attempts;
+
+  const QueueItem({
+    this.id,
+    required this.kind,
+    required this.payloadJson,
+    required this.createdAt,
+    this.attempts = 0,
+  });
 
   Map<String, Object?> toMap() => {
-        'id': id == 0 ? null : id,
-        'inquiryType': inquiryType,
-        'title': title,
-        'plateNumber': plateNumber,
-        'barcodeOrVin': barcodeOrVin,
-        'nationalId': nationalId,
-        'fullName': fullName,
-        'phoneNumber': phoneNumber,
-        'vinCode': vinCode,
-        'barcode': barcode,
-        'engineNumber': engineNumber,
-        'chassisNumber': chassisNumber,
-        'postalCode': postalCode,
-        'address': address,
-        'amount': amount,
-        'workflowMethod': workflowMethod,
-        'status': status,
-        'transactionRef': transactionRef,
-        'dateMillis': dateMillis == 0 ? DateTime.now().millisecondsSinceEpoch : dateMillis,
+        'id': id,
+        'kind': kind,
+        'payloadJson': payloadJson,
+        'createdAt': createdAt,
+        'attempts': attempts,
       };
 
-  factory InquiryRecord.fromMap(Map<String, Object?> map) => InquiryRecord(
-        id: (map['id'] as int?) ?? 0,
-        inquiryType: (map['inquiryType'] as String?) ?? '',
-        title: (map['title'] as String?) ?? '',
-        plateNumber: (map['plateNumber'] as String?) ?? '',
-        barcodeOrVin: (map['barcodeOrVin'] as String?) ?? '',
-        nationalId: (map['nationalId'] as String?) ?? '',
-        fullName: (map['fullName'] as String?) ?? '',
-        phoneNumber: (map['phoneNumber'] as String?) ?? '',
-        vinCode: (map['vinCode'] as String?) ?? '',
-        barcode: (map['barcode'] as String?) ?? '',
-        engineNumber: (map['engineNumber'] as String?) ?? '',
-        chassisNumber: (map['chassisNumber'] as String?) ?? '',
-        postalCode: (map['postalCode'] as String?) ?? '',
-        address: (map['address'] as String?) ?? '',
-        amount: (map['amount'] as int?) ?? 0,
-        workflowMethod: (map['workflowMethod'] as String?) ?? '',
-        status: (map['status'] as String?) ?? '',
-        transactionRef: (map['transactionRef'] as String?) ?? '',
-        dateMillis: (map['dateMillis'] as int?) ?? 0,
+  factory QueueItem.fromMap(Map<String, Object?> m) => QueueItem(
+        id: m['id'] as int?,
+        kind: m['kind'] as String,
+        payloadJson: m['payloadJson'] as String,
+        createdAt: (m['createdAt'] as num).toInt(),
+        attempts: (m['attempts'] as num?)?.toInt() ?? 0,
       );
 }
