@@ -1,0 +1,6 @@
+{
+  "name": "مدیریت سوخت و استعلام",
+  "description": "سامانه جامع مدیریت هوشمند سوخت خودرو، استعلام و پرداخت خلافی و عوارض، خدمات بیمه و یادآور سرویس متصل به بازوی بله",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
