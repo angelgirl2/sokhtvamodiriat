@@ -651,197 +651,173 @@ fun ModernDashboardLayout(
             }
 
             // -----------------------------------------------------------------
-            // 1. ACTIVE VEHICLE (CAR / MOTORCYCLE) OVERVIEW WITH DETAILS BUTTON
+            // 1. VEHICLES (CAR / MOTORCYCLE) SWIPEABLE OVERVIEW (کشیدن برای سایر پلاک‌ها)
             // -----------------------------------------------------------------
-            if (activeVehicle != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onNavigateToVehicleDetail(activeVehicle.id) },
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-                    border = CardDefaults.outlinedCardBorder()
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+            if (vehicles.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Top row: Title, badge, and Edit/Delete buttons
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (activeVehicle.isMotorcycle) Color(0xFF8B5CF6).copy(alpha = 0.15f) else MaterialTheme.colorScheme.primaryContainer,
-                                    modifier = Modifier.padding(2.dp)
-                                ) {
-                                    Text(
-                                        text = if (activeVehicle.isMotorcycle) "🏍️ موتور" else "🚗 خودرو",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (activeVehicle.isMotorcycle) Color(0xFF7C3AED) else MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
-                                    )
-                                }
-
-                                Column {
-                                    Text(
-                                        text = activeVehicle.title,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 15.sp,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "${String.format("%,d", activeVehicle.currentOdometer)} کیلومتر کارکرد",
-                                        fontSize = 11.5.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-
-                            // Edit and Delete buttons for vehicle
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(
-                                    onClick = {
-                                        vehicleToEdit = activeVehicle
-                                        showVehicleFormDialog = true
-                                    },
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .testTag("edit_vehicle_button")
-                                ) {
-                                    Icon(
-                                        Icons.Default.Edit,
-                                        contentDescription = "ویرایش وسیله نقلیه",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        vehicleToDelete = activeVehicle
-                                    },
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .testTag("delete_vehicle_button")
-                                ) {
-                                    Icon(
-                                        Icons.Default.DeleteOutline,
-                                        contentDescription = "حذف وسیله نقلیه",
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(19.dp)
-                                    )
-                                }
-                            }
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icons.Default.DirectionsCar, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            Text("خودروها و پلاک‌های ثبت‌شده (${vehicles.size})", fontSize = 12.5.sp, fontWeight = FontWeight.Bold)
                         }
-
-                        // Complete authentic Iranian License Plate View
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                                .padding(vertical = 8.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            VehiclePlateView(
-                                vehicle = activeVehicle
-                            )
-                        }
-
-                        // Reminder preview badges (Oil & Insurance)
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            // Insurance status badge
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (insuranceDaysRemaining <= 15) MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
-                                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Security,
-                                        contentDescription = null,
-                                        tint = if (insuranceDaysRemaining <= 15) MaterialTheme.colorScheme.error else Color(0xFF1D4ED8),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Text(
-                                        text = if (insuranceDaysRemaining <= 0) "بیمه منقضی" else "بیمه: $insuranceDaysRemaining روز",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (insuranceDaysRemaining <= 15) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-
-                            // Oil status badge
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Build,
-                                        contentDescription = null,
-                                        tint = Color(0xFF7C3AED),
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    val kmToOil = if (activeOilReminder != null) activeOilReminder.targetOdometer - activeVehicle.currentOdometer else null
-                                    Text(
-                                        text = if (kmToOil != null && kmToOil > 0) "روغن: %,d km".format(kmToOil)
-                                        else if (activeOilReminder != null) "تعویض روغن فوری"
-                                        else "تنظیم یادآور روغن",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (kmToOil != null && kmToOil <= 500) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                        }
-
-                        // Bottom action: Details & Add new vehicle
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(
-                                onClick = { onNavigateToVehicleDetail(activeVehicle.id) },
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp)
-                            ) {
-                                Text("مشاهده کامل جزئیات و سوابق ←", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
-                            }
-
+                        if (vehicles.size > 1) {
+                            Text("◄ برای دیدن سایر پلاک‌ها بکشید", fontSize = 10.5.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        } else {
                             TextButton(
                                 onClick = { showAddVehicleBottomSheet = true },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("افزودن وسیله", fontSize = 11.5.sp)
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(2.dp))
+                                Text("افزودن پلاک جدید", fontSize = 11.sp)
+                            }
+                        }
+                    }
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 2.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(vehicles) { veh ->
+                            val isSelected = activeVehicle?.id == veh.id
+                            Card(
+                                modifier = Modifier
+                                    .width(300.dp)
+                                    .clickable {
+                                        fuelViewModel.selectVehicle(veh.id)
+                                        onNavigateToVehicleDetail(veh.id)
+                                    },
+                                shape = RoundedCornerShape(20.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (isSelected) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                ),
+                                elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 3.dp else 1.dp),
+                                border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    // Top row: Title, badge, and Edit/Delete buttons
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            Surface(
+                                                shape = RoundedCornerShape(8.dp),
+                                                color = if (veh.isMotorcycle) Color(0xFF8B5CF6).copy(alpha = 0.15f) else MaterialTheme.colorScheme.primaryContainer,
+                                                modifier = Modifier.padding(2.dp)
+                                            ) {
+                                                Text(
+                                                    text = if (veh.isMotorcycle) "🏍️ موتور" else "🚗 خودرو",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (veh.isMotorcycle) Color(0xFF7C3AED) else MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                                )
+                                            }
+
+                                            Column {
+                                                Text(
+                                                    text = veh.title,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 14.5.sp,
+                                                    color = MaterialTheme.colorScheme.onSurface
+                                                )
+                                                Text(
+                                                    text = "${String.format("%,d", veh.currentOdometer)} کیلومتر",
+                                                    fontSize = 11.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            IconButton(
+                                                onClick = {
+                                                    vehicleToEdit = veh
+                                                    showVehicleFormDialog = true
+                                                },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Edit,
+                                                    contentDescription = "ویرایش",
+                                                    tint = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = {
+                                                    vehicleToDelete = veh
+                                                },
+                                                modifier = Modifier.size(32.dp)
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.DeleteOutline,
+                                                    contentDescription = "حذف",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    // Complete authentic Iranian License Plate View
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                                            .padding(vertical = 6.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        VehiclePlateView(vehicle = veh)
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        TextButton(
+                                            onClick = {
+                                                fuelViewModel.selectVehicle(veh.id)
+                                                onNavigateToVehicleDetail(veh.id)
+                                            },
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                                        ) {
+                                            Text("جزئیات و سوابق ←", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                        }
+
+                                        if (isSelected) {
+                                            Surface(
+                                                shape = RoundedCornerShape(6.dp),
+                                                color = MaterialTheme.colorScheme.primary
+                                            ) {
+                                                Text(
+                                                    "انتخاب شده",
+                                                    fontSize = 9.5.sp,
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1556,21 +1532,31 @@ fun AddVehicleBottomSheet(
         Spacer(modifier = Modifier.height(2.dp))
         Button(
             onClick = {
-                if (title.isNotBlank()) {
-                    onConfirm(
-                        title.trim(),
-                        if (vehicleType == VehicleEntity.TYPE_ARVAND) arvandDigits.trim() else plateF2.trim(),
-                        if (vehicleType == VehicleEntity.TYPE_ARVAND) "اروند" else if (vehicleType == VehicleEntity.TYPE_MOTORCYCLE) "موتور" else plateLetter.trim(),
-                        if (vehicleType == VehicleEntity.TYPE_ARVAND) arvandDigits.trim() else plateL3.trim(),
-                        if (vehicleType == VehicleEntity.TYPE_ARVAND) "اروند" else plateCity.trim(),
-                        fuelType,
-                        tankCapacity.toDoubleOrNull() ?: (if (vehicleType == VehicleEntity.TYPE_MOTORCYCLE) 10.0 else 50.0),
-                        currentOdometer.toIntOrNull() ?: 0,
-                        vehicleType
-                    )
+                val finalTitle = title.ifBlank {
+                    when (vehicleType) {
+                        VehicleEntity.TYPE_ARVAND -> "خودرو اروندی"
+                        VehicleEntity.TYPE_MOTORCYCLE -> "موتورسیکلت"
+                        else -> "خودرو شخصی"
+                    }
                 }
+                val finalF2 = if (vehicleType == VehicleEntity.TYPE_ARVAND) arvandDigits.ifBlank { "12365" } else plateF2.ifBlank { "12" }
+                val finalL3 = if (vehicleType == VehicleEntity.TYPE_ARVAND) arvandDigits.ifBlank { "12365" } else plateL3.ifBlank { "345" }
+                val finalCity = if (vehicleType == VehicleEntity.TYPE_ARVAND) "اروند" else plateCity.ifBlank { "11" }
+                val finalLetter = if (vehicleType == VehicleEntity.TYPE_ARVAND) "اروند" else if (vehicleType == VehicleEntity.TYPE_MOTORCYCLE) "موتور" else plateLetter.ifBlank { "ب" }
+
+                onConfirm(
+                    finalTitle.trim(),
+                    finalF2.trim(),
+                    finalLetter.trim(),
+                    finalL3.trim(),
+                    finalCity.trim(),
+                    fuelType,
+                    tankCapacity.toDoubleOrNull() ?: (if (vehicleType == VehicleEntity.TYPE_MOTORCYCLE) 10.0 else 50.0),
+                    currentOdometer.toIntOrNull() ?: 0,
+                    vehicleType
+                )
             },
-            enabled = title.isNotBlank(),
+            enabled = true,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(48.dp),

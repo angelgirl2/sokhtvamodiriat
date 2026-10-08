@@ -18,9 +18,11 @@ interface ServiceRequestDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRequest(request: ServiceRequestEntity): Long
 
+    @Transaction
     @Update
     suspend fun updateRequest(request: ServiceRequestEntity)
 
+    @Transaction
     @Delete
     suspend fun deleteRequest(request: ServiceRequestEntity)
 }

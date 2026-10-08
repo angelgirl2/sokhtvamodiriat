@@ -22,7 +22,32 @@ data class InquiryRecordEntity(
     val address: String = "",
     val amount: Long, // Tomans
     val workflowMethod: String, // "EXPERT_REVIEW" or "DIRECT_PAYMENT"
-    val status: String, // "در انتظار پرداخت", "در حال بررسی توسط کارشناس", "پرداخت شد و تسویه گردید"
+    val status: String, // "در انتظار بررسی", "تایید شده", "رد شده"
     val transactionRef: String = "",
-    val dateMillis: Long = System.currentTimeMillis()
-)
+    val dateMillis: Long = System.currentTimeMillis(),
+    val updatedDateMillis: Long = System.currentTimeMillis()
+) {
+    val isApproved: Boolean
+        get() = status.equals(STATUS_APPROVED, ignoreCase = true) ||
+                status.contains("تایید") ||
+                status.contains("تسویه") ||
+                status.contains("موفق") ||
+                status.contains("پرداخت") ||
+                status.contains("Approved", ignoreCase = true) ||
+                status.contains("OK", ignoreCase = true)
+
+    val isRejected: Boolean
+        get() = status.equals(STATUS_REJECTED, ignoreCase = true) ||
+                status.contains("رد") ||
+                status.contains("ناموفق") ||
+                status.contains("Rejected", ignoreCase = true)
+
+    val isPending: Boolean
+        get() = !isApproved && !isRejected
+
+    companion object {
+        const val STATUS_PENDING = "در انتظار بررسی"
+        const val STATUS_APPROVED = "تایید شده"
+        const val STATUS_REJECTED = "رد شده"
+    }
+}

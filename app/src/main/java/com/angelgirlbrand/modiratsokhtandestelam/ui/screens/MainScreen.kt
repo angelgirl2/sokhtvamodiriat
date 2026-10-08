@@ -97,22 +97,26 @@ fun MainScreen(
             )
         }
     ) { innerPadding ->
-        val modifier = Modifier
-            .fillMaxSize()
-            .padding(innerPadding)
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            val isWideScreen = maxWidth > 600.dp
+            val contentModifier = Modifier.fillMaxSize()
 
-        when (selectedItem) {
-            NavigationItem.DASHBOARD -> Column(modifier = modifier) {
+            when (selectedItem) {
+                NavigationItem.DASHBOARD -> Column(modifier = contentModifier) {
                 SmartNotificationDashboardScreen(
                     fuelViewModel = fuelViewModel,
                     baleViewModel = baleViewModel,
                     onNavigateToInsurance = { selectedItem = NavigationItem.SERVICES },
                     onNavigateToFuel = { selectedItem = NavigationItem.FUEL },
                     onNavigateToInquiry = { selectedItem = NavigationItem.INQUIRY },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.weight(1f).fillMaxWidth()
                 )
             }
-            NavigationItem.FUEL -> Column(modifier = modifier) {
+            NavigationItem.FUEL -> Column(modifier = contentModifier) {
                 SectionIntroGuideCard(
                     sectionKey = "fuel_management_tab",
                     title = "راهنمای مدیریت سوخت و باک",
@@ -124,7 +128,7 @@ fun MainScreen(
                     icon = Icons.Default.LocalGasStation,
                     accentColor = Color(0xFF0284C7),
                     securityManager = securityManager,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = if (isWideScreen) 32.dp else 16.dp, vertical = 4.dp)
                 )
                 FuelManagementScreen(
                     fuelViewModel = fuelViewModel,
@@ -135,10 +139,10 @@ fun MainScreen(
                     onNavigateToReminders = {
                         selectedItem = NavigationItem.REMINDERS
                     },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.weight(1f).fillMaxWidth()
                 )
             }
-            NavigationItem.SERVICES -> Column(modifier = modifier) {
+            NavigationItem.SERVICES -> Column(modifier = contentModifier) {
                 SectionIntroGuideCard(
                     sectionKey = "services_request_tab",
                     title = "راهنمای درخواست خدمات و بیمه",
@@ -150,15 +154,15 @@ fun MainScreen(
                     icon = Icons.Default.Assignment,
                     accentColor = Color(0xFF059669),
                     securityManager = securityManager,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = if (isWideScreen) 32.dp else 16.dp, vertical = 4.dp)
                 )
                 BaleBotRequestScreen(
                     baleViewModel = baleViewModel,
                     fuelViewModel = fuelViewModel,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.weight(1f).fillMaxWidth()
                 )
             }
-            NavigationItem.TARIFFS -> Column(modifier = modifier) {
+            NavigationItem.TARIFFS -> Column(modifier = contentModifier) {
                 SectionIntroGuideCard(
                     sectionKey = "tariffs_price_tab",
                     title = "راهنمای تعرفه خدمات و هزینه انجام کار",
@@ -170,34 +174,34 @@ fun MainScreen(
                     icon = Icons.Default.Payments,
                     accentColor = Color(0xFF059669),
                     securityManager = securityManager,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = if (isWideScreen) 32.dp else 16.dp, vertical = 4.dp)
                 )
                 PriceTariffScreen(
                     baleViewModel = baleViewModel,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.weight(1f).fillMaxWidth()
                 )
             }
-            NavigationItem.INQUIRY -> Column(modifier = modifier) {
+            NavigationItem.INQUIRY -> Column(modifier = contentModifier) {
                 SectionIntroGuideCard(
-                    sectionKey = "inquiry_fines_tab",
-                    title = "راهنمای استعلام خلافی و عوارض",
-                    description = "استعلام تخلفات رانندگی و عوارض آزادراهی فقط با شماره پلاک خودرو یا موتورسیکلت با امکان پرداخت آنلاین.",
+                    sectionKey = "inquiry_payment_tab",
+                    title = "راهنمای استعلام و پرداخت سوابق",
+                    description = "استعلام زنده خلافی راهور، عوارض آزادراهی و شهرداری با امکان تسویه آنی و مشاهده رسید دیجیتال.",
                     tips = listOf(
-                        "امکان انتخاب سریع پلاک از میان وسایل نقلیه ثبت‌شده شما.",
-                        "مشاهده ریز خلافی و تسویه فوری با کد رهگیری امن شاپرک."
+                        "استعلام خلافی در این بخش فقط با شماره پلاک و کد ملی مالک انجام می‌پذیرد.",
+                        "پس از استعلام، امکان اشتراک‌گذاری رسید رسمی برای شما فراهم است."
                     ),
-                    icon = Icons.Default.ReceiptLong,
-                    accentColor = Color(0xFF0D9488),
+                    icon = Icons.Default.Search,
+                    accentColor = Color(0xFF0284C7),
                     securityManager = securityManager,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = if (isWideScreen) 32.dp else 16.dp, vertical = 4.dp)
                 )
                 InquiryAndPaymentScreen(
                     baleViewModel = baleViewModel,
                     fuelViewModel = fuelViewModel,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.weight(1f).fillMaxWidth()
                 )
             }
-            NavigationItem.REMINDERS -> Column(modifier = modifier) {
+            NavigationItem.REMINDERS -> Column(modifier = contentModifier) {
                 SectionIntroGuideCard(
                     sectionKey = "service_reminders_tab",
                     title = "راهنمای یادآورهای سرویس دوره‌ای",
@@ -209,14 +213,14 @@ fun MainScreen(
                     icon = Icons.Default.Build,
                     accentColor = Color(0xFF8B5CF6),
                     securityManager = securityManager,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = if (isWideScreen) 32.dp else 16.dp, vertical = 4.dp)
                 )
                 ServiceRemindersScreen(
                     fuelViewModel = fuelViewModel,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.weight(1f).fillMaxWidth()
                 )
             }
-            NavigationItem.SETTINGS -> Column(modifier = modifier) {
+            NavigationItem.SETTINGS -> Column(modifier = contentModifier) {
                 SectionIntroGuideCard(
                     sectionKey = "settings_tab",
                     title = "راهنمای تنظیمات و شخصی‌سازی",
@@ -229,7 +233,7 @@ fun MainScreen(
                     icon = Icons.Default.Settings,
                     accentColor = Color(0xFF64748B),
                     securityManager = securityManager,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = if (isWideScreen) 32.dp else 16.dp, vertical = 4.dp)
                 )
                 SettingsScreen(
                     securityManager = securityManager,
@@ -239,11 +243,12 @@ fun MainScreen(
                     currentDarkModePref = currentDarkModePref,
                     onThemeColorChanged = onThemeColorChanged,
                     onDarkModePrefChanged = onDarkModePrefChanged,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.weight(1f).fillMaxWidth()
                 )
             }
         }
     }
+}
 }
 
 @Composable
@@ -253,11 +258,14 @@ fun ModernFloatingNavigationBar(
     modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val compact = maxWidth < 380.dp
+        val navWidth = maxWidth
+        val showLabels = navWidth > 420.dp
+        val isVerySmall = navWidth < 360.dp
+
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = if (compact) 6.dp else 14.dp, vertical = 8.dp)
+                .padding(horizontal = if (isVerySmall) 8.dp else 14.dp, vertical = 10.dp)
                 .shadow(
                     elevation = 12.dp,
                     shape = RoundedCornerShape(26.dp),
@@ -276,7 +284,7 @@ fun ModernFloatingNavigationBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = if (compact) 6.dp else 8.dp),
+                    .padding(horizontal = 6.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceAround,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -285,7 +293,7 @@ fun ModernFloatingNavigationBar(
                     val interactionSource = remember { MutableInteractionSource() }
 
                     val animatedScale by animateFloatAsState(
-                        targetValue = if (isSelected) 1.06f else 1.0f,
+                        targetValue = if (isSelected) 1.08f else 1.0f,
                         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
                         label = "nav_scale"
                     )
@@ -314,10 +322,7 @@ fun ModernFloatingNavigationBar(
                             ) {
                                 onItemSelected(item)
                             }
-                            .padding(
-                                vertical = if (compact) 4.dp else 6.dp,
-                                horizontal = 2.dp
-                            )
+                            .padding(vertical = 6.dp, horizontal = 2.dp)
                             .testTag("nav_item_${item.name.lowercase()}"),
                         contentAlignment = Alignment.Center
                     ) {
@@ -327,7 +332,7 @@ fun ModernFloatingNavigationBar(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(if (compact) 30.dp else 32.dp)
+                                    .size(if (showLabels) 28.dp else 32.dp)
                                     .clip(CircleShape)
                                     .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent),
                                 contentAlignment = Alignment.Center
@@ -336,28 +341,32 @@ fun ModernFloatingNavigationBar(
                                     imageVector = item.icon,
                                     contentDescription = item.title,
                                     tint = iconColor,
-                                    modifier = Modifier.size(if (compact) 18.dp else 19.dp)
+                                    modifier = Modifier.size(if (showLabels) 18.dp else 22.dp)
                                 )
                             }
 
-                            if (!compact) {
+                            if (showLabels || isSelected) {
+                                Spacer(modifier = Modifier.height(1.dp))
+
                                 Text(
                                     text = item.title,
                                     fontSize = if (isSelected) 8.5.sp else 8.sp,
                                     fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
                                     color = iconColor,
                                     maxLines = 1,
-                                    overflow = TextOverflow.Clip
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                                if (isSelected) {
-                                    Spacer(modifier = Modifier.height(2.dp))
-                                    Box(
-                                        modifier = Modifier
-                                            .size(4.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary)
-                                    )
-                                }
+                            }
+
+                            // Glowing bottom indicator dot for active item
+                            if (isSelected) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(4.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.primary)
+                                )
                             }
                         }
                     }

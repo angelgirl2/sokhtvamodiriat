@@ -42,10 +42,16 @@ fun CustomAppNotificationBanner(
     accentColor: Color = Color(0xFF38BDF8),
     autoDismissDurationMillis: Long = 4000L
 ) {
-    var isVisible by remember(message) { mutableStateOf(!message.isNullOrBlank()) }
+    val emojiPattern = remember {
+        Regex("[\\uD83C-\\uDBFF\\uDC00-\\uDFFF\\u2600-\\u26FF\\u2700-\\u27BF\\uFE00-\\uFE0F\\p{So}]")
+    }
+    val cleanMessage = remember(message) {
+        message?.replace(emojiPattern, "")?.replace(Regex(" +"), " ")?.trim()
+    }
+    var isVisible by remember(cleanMessage) { mutableStateOf(!cleanMessage.isNullOrBlank()) }
 
-    LaunchedEffect(message) {
-        if (!message.isNullOrBlank()) {
+    LaunchedEffect(cleanMessage) {
+        if (!cleanMessage.isNullOrBlank()) {
             isVisible = true
             delay(autoDismissDurationMillis)
             isVisible = false
@@ -55,7 +61,7 @@ fun CustomAppNotificationBanner(
     }
 
     AnimatedVisibility(
-        visible = isVisible && !message.isNullOrBlank(),
+        visible = isVisible && !cleanMessage.isNullOrBlank(),
         enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(animationSpec = tween(300)),
         exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(animationSpec = tween(300)),
         modifier = modifier
@@ -119,7 +125,7 @@ fun CustomAppNotificationBanner(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = message ?: "",
+                                    text = cleanMessage ?: "",
                                     fontSize = 12.5.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = Color.White,

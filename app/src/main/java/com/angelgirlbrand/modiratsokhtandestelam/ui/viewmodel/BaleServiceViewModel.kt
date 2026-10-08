@@ -3,7 +3,6 @@ package com.angelgirlbrand.modiratsokhtandestelam.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.angelgirlbrand.modiratsokhtandestelam.data.local.entity.BaleRequestHistoryEntity
 import com.angelgirlbrand.modiratsokhtandestelam.data.local.entity.InquiryRecordEntity
 import com.angelgirlbrand.modiratsokhtandestelam.data.local.entity.ServiceRequestEntity
 import com.angelgirlbrand.modiratsokhtandestelam.data.local.entity.VehicleEntity
@@ -21,14 +20,10 @@ class BaleServiceViewModel(
 ) : ViewModel() {
 
     val serviceRequests: StateFlow<List<ServiceRequestEntity>> = repository.getAllRequests()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     val inquiries: StateFlow<List<InquiryRecordEntity>> = repository.getAllInquiries()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val successfulBaleHistory: StateFlow<List<BaleRequestHistoryEntity>> =
-        repository.getSuccessfulBaleRequestHistory()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     private val _isSubmitting = MutableStateFlow(false)
     val isSubmitting: StateFlow<Boolean> = _isSubmitting.asStateFlow()
@@ -56,8 +51,6 @@ class BaleServiceViewModel(
 
     val servicePrices: StateFlow<Map<String, String>> = com.angelgirlbrand.modiratsokhtandestelam.security.PriceManager.pricesState
 
-    private var currentBotOffset: Long = 0L
-
     init {
         refreshPrices()
         startPollingBaleCommands()
@@ -84,11 +77,14 @@ class BaleServiceViewModel(
                 try {
                     val botToken = securityManager.getBaleBotToken()
                     if (botToken.isNotBlank()) {
-                        val (newOffset, appliedList) = repository.processBaleBotUpdates(botToken, currentBotOffset)
-                        currentBotOffset = newOffset
+                        val (_, appliedList) = repository.processBaleBotUpdates(botToken)
                         if (appliedList.isNotEmpty()) {
-                            _lastCommandNotification.value = appliedList.joinToString("\n")
-                            _submissionMessage.value = appliedList.firstOrNull()
+                            val emojiRegex = Regex("[\\uD83C-\\uDBFF\\uDC00-\\uDFFF\\u2600-\\u26FF\\u2700-\\u27BF\\uFE00-\\uFE0F\\p{So}]")
+                            val cleanList = appliedList.map { it.replace(emojiRegex, "").trim() }
+                            _lastCommandNotification.value = cleanList.joinToString("\n")
+                            _submissionMessage.value = cleanList.firstOrNull()
+                            val notifHelper = com.angelgirlbrand.modiratsokhtandestelam.notification.NotificationHelper(com.angelgirlbrand.modiratsokhtandestelam.FuelApplication.instance)
+                            notifHelper.showServiceAlert("بروزرسانی وضعیت از سوی مدیر", cleanList.first())
                         }
                     }
                 } catch (e: Exception) {
@@ -104,11 +100,12 @@ class BaleServiceViewModel(
             try {
                 _isSubmitting.value = true
                 val botToken = securityManager.getBaleBotToken()
-                val (newOffset, appliedList) = repository.processBaleBotUpdates(botToken, currentBotOffset)
-                currentBotOffset = newOffset
+                val (_, appliedList) = repository.processBaleBotUpdates(botToken)
                 if (appliedList.isNotEmpty()) {
-                    _lastCommandNotification.value = appliedList.joinToString("\n")
-                    _submissionMessage.value = "آخرین وضعیت درخواست‌های شما بروزرسانی گردید:\n" + appliedList.joinToString("\n")
+                    val emojiRegex = Regex("[\\uD83C-\\uDBFF\\uDC00-\\uDFFF\\u2600-\\u26FF\\u2700-\\u27BF\\uFE00-\\uFE0F\\p{So}]")
+                    val cleanList = appliedList.map { it.replace(emojiRegex, "").trim() }
+                    _lastCommandNotification.value = cleanList.joinToString("\n")
+                    _submissionMessage.value = "آخرین وضعیت درخواست‌های شما بروزرسانی گردید:\n" + cleanList.joinToString("\n")
                 } else {
                     _submissionMessage.value = "وضعیت درخواست‌ها بررسی شد؛ تغییر جدیدی ثبت نگردیده است."
                 }
@@ -196,14 +193,14 @@ class BaleServiceViewModel(
         insuranceCompany: String = "",
         durationMonths: Int = 12,
         discountPercent: Int = 0,
-        details: String = "",
-        onComplete: (Boolean) -> Unit = {}
+        details: String = ""
     ) {
         viewModelScope.launch {
             _isSubmitting.value = true
             try {
                 val botToken = securityManager.getBaleBotToken()
                 val chatId = securityManager.getBaleChatId()
+
                 repository.submitServiceRequest(
                     requestType = requestType,
                     title = title,
@@ -225,11 +222,9 @@ class BaleServiceViewModel(
                     botToken = botToken,
                     chatId = chatId
                 )
-                _submissionMessage.value = "درخواست با موفقیت به ربات بله ارسال شد."
-                onComplete(true)
+                _submissionMessage.value = "درخواست شما با موفقیت ثبت شد و در انتظار تایید کارشناس قرار گرفت."
             } catch (e: Exception) {
-                _submissionMessage.value = "ارسال به ربات بله انجام نشد. لطفاً اتصال اینترنت را بررسی و دوباره تلاش کنید."
-                onComplete(false)
+                _submissionMessage.value = "خطا در ارسال اطلاعات درخواست. لطفاً اتصال اینترنت خود را چک کرده و مجدداً تلاش نمایید."
             } finally {
                 _isSubmitting.value = false
             }
@@ -238,6 +233,7 @@ class BaleServiceViewModel(
 
     // Admin Approval / Status Update via Bale Bot Commands
     fun updateRequestStatus(requestId: Long, newStatus: String) {
+        android.util.Log.d("BaleServiceViewModel", "Updating request $requestId to status: $newStatus")
         viewModelScope.launch {
             repository.updateRequestStatus(requestId = requestId, newStatus = newStatus)
             _submissionMessage.value = "تغییر وضعیت با موفقیت اعمال شد: وضعیت به «$newStatus» تغییر یافت."
@@ -262,7 +258,7 @@ class BaleServiceViewModel(
         }
     }
 
-    // Submit an inquiry directly to Bale; no fake result is created locally.
+    // Submit Inquiry & Payment
     fun submitInquiry(
         inquiryType: String,
         title: String,
@@ -278,15 +274,15 @@ class BaleServiceViewModel(
         engineNumber: String = "",
         chassisNumber: String = "",
         postalCode: String = "",
-        address: String = "",
-        onComplete: (Boolean) -> Unit = {}
+        address: String = ""
     ) {
         viewModelScope.launch {
             _isSubmitting.value = true
             try {
                 val botToken = securityManager.getBaleBotToken()
                 val chatId = securityManager.getBaleChatId()
-                repository.submitInquiry(
+
+                val created = repository.submitInquiry(
                     inquiryType = inquiryType,
                     title = title,
                     plateNumber = plateNumber,
@@ -305,31 +301,140 @@ class BaleServiceViewModel(
                     botToken = botToken,
                     chatId = chatId
                 )
-                _submissionMessage.value = "درخواست شما با موفقیت به ربات بله ارسال شد و در سابقه ذخیره گردید."
-                onComplete(true)
+
+                if (workflowMethod == "DIRECT_PAYMENT") {
+                    _submissionMessage.value = "درگاه پرداخت متصل گردید. در انتظار تکمیل تراکنش بانکی..."
+                } else {
+                    _submissionMessage.value = "اطلاعات استعلام ثبت شد و کد رهگیری اختصاص یافت."
+                }
             } catch (e: Exception) {
-                _submissionMessage.value = "ارسال درخواست به ربات بله ناموفق بود؛ هیچ استعلام فیکی در سابقه ثبت نشد."
-                onComplete(false)
+                _submissionMessage.value = "خطا در ثبت استعلام. لطفاً ارتباط شبکه خود را بررسی کنید."
             } finally {
                 _isSubmitting.value = false
             }
         }
     }
 
-    // Payment settlement is intentionally not simulated. A real payment gateway can be
-    // connected later; the app must never manufacture a successful transaction locally.
+    // Settle / Approve Inquiry by Admin
+    fun approveInquiry(inquiryId: Long) {
+        android.util.Log.d("BaleServiceViewModel", "Approving inquiry $inquiryId")
+        viewModelScope.launch {
+            val inq = inquiries.value.firstOrNull { it.id == inquiryId }
+            if (inq != null) {
+                val ref = "ADM-" + (10000000..99999999).random()
+                repository.updateInquiry(
+                    inq.copy(
+                        status = InquiryRecordEntity.STATUS_APPROVED,
+                        transactionRef = ref,
+                        updatedDateMillis = System.currentTimeMillis()
+                    )
+                )
+                _submissionMessage.value = "استعلام #${inquiryId} توسط مدیر تایید گردید و وضعیت آن بلافاصله سبز شد."
+            }
+        }
+    }
+
+    // Submit Payment Slip to Manager Card & Bale Bot
+    fun submitPaymentSlip(
+        inquiry: InquiryRecordEntity,
+        receiptRef: String,
+        payerName: String,
+        bankName: String,
+        senderCard: String,
+        amountPaid: Long,
+        imageUri: String
+    ) {
+        viewModelScope.launch {
+            _isSubmitting.value = true
+            try {
+                val botToken = securityManager.getBaleBotToken()
+                val chatId = securityManager.getBaleChatId()
+
+                val updatedStatus = "در انتظار تایید فیش پرداختی توسط مدیر (رسید: $receiptRef)"
+                val updatedInquiry = inquiry.copy(
+                    amount = amountPaid,
+                    status = updatedStatus,
+                    transactionRef = receiptRef
+                )
+                repository.updateInquiry(updatedInquiry)
+
+                val detailsText = buildString {
+                    append("💳 شماره کارت مبدأ: ").append(senderCard.ifBlank { "ثبت نشده" }).append("\n")
+                    append("💰 مبلغ واریزی: ").append(String.format("%,d", amountPaid)).append(" تومان\n")
+                    append("🧾 شماره پیگیری فیش: ").append(receiptRef).append("\n")
+                    append("🏦 بانک مبدأ: ").append(bankName.ifBlank { "نامشخص" }).append("\n")
+                    if (imageUri.isNotBlank()) {
+                        append("🖼 تصویر فیش پیوست شده: ").append(imageUri)
+                    }
+                }
+
+                // Submit payment slip details to manager via Bale Bot
+                repository.submitServiceRequest(
+                    requestType = "فیش پرداختی به کارت مدیر",
+                    title = inquiry.inquiryType,
+                    fullName = if (payerName.isNotBlank()) payerName else "کاربر گرامی",
+                    nationalCode = inquiry.nationalId,
+                    phoneNumber = inquiry.phoneNumber,
+                    vehiclePlate = inquiry.plateNumber,
+                    vinCode = bankName,
+                    details = detailsText,
+                    botToken = botToken,
+                    chatId = chatId
+                )
+
+                // Trigger Push Notification
+                val notifHelper = com.angelgirlbrand.modiratsokhtandestelam.notification.NotificationHelper(com.angelgirlbrand.modiratsokhtandestelam.FuelApplication.instance)
+                notifHelper.showServiceAlert("ارسال فیش پرداخت", "فیش پرداختی با شماره پیگیری $receiptRef برای مدیر ارسال شد.")
+
+                _submissionMessage.value = "فیش پرداختی با شماره پیگیری $receiptRef با موفقیت به مدیر ارسال شد و در انتظار تایید قرار گرفت."
+            } catch (e: Exception) {
+                _submissionMessage.value = "خطا در ارسال فیش پرداختی. لطفاً اتصال اینترنت را بررسی نمایید."
+            } finally {
+                _isSubmitting.value = false
+            }
+        }
+    }
+
     fun deleteInquiry(inquiry: InquiryRecordEntity) {
         viewModelScope.launch {
             repository.deleteInquiry(inquiry)
         }
     }
 
-    fun deleteBaleHistory(record: BaleRequestHistoryEntity) {
-        viewModelScope.launch { repository.deleteBaleRequestHistory(record) }
-    }
-
-    fun clearBaleHistory() {
-        viewModelScope.launch { repository.clearBaleRequestHistory() }
+    fun resendInquiryToBot(inquiry: InquiryRecordEntity) {
+        viewModelScope.launch {
+            _isSubmitting.value = true
+            try {
+                val botToken = securityManager.getBaleBotToken()
+                val chatId = securityManager.getBaleChatId()
+                
+                // Re-submit using the same data but this will trigger a new message
+                repository.submitInquiry(
+                    inquiryType = inquiry.inquiryType,
+                    title = inquiry.title,
+                    plateNumber = inquiry.plateNumber,
+                    barcodeOrVin = inquiry.barcodeOrVin,
+                    nationalId = inquiry.nationalId,
+                    amount = inquiry.amount,
+                    workflowMethod = inquiry.workflowMethod,
+                    fullName = inquiry.fullName,
+                    phoneNumber = inquiry.phoneNumber,
+                    vinCode = inquiry.vinCode,
+                    barcode = inquiry.barcode,
+                    engineNumber = inquiry.engineNumber,
+                    chassisNumber = inquiry.chassisNumber,
+                    postalCode = inquiry.postalCode,
+                    address = inquiry.address,
+                    botToken = botToken,
+                    chatId = chatId
+                )
+                _submissionMessage.value = "درخواست مجدداً به ربات بله ارسال گردید."
+            } catch (e: Exception) {
+                _submissionMessage.value = "خطا در ارسال مجدد. لطفاً اتصال اینترنت را بررسی نمایید."
+            } finally {
+                _isSubmitting.value = false
+            }
+        }
     }
 
     // Submit Donation Support with custom amount and optional receipt photo

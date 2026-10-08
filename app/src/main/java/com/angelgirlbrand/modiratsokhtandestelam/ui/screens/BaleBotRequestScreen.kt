@@ -51,93 +51,99 @@ fun BaleBotRequestScreen(
     fuelViewModel: FuelViewModel,
     modifier: Modifier = Modifier
 ) {
-    val context = LocalContext.current
-    val requests by baleViewModel.serviceRequests.collectAsState()
-    val isSubmitting by baleViewModel.isSubmitting.collectAsState()
-    val submissionMessage by baleViewModel.submissionMessage.collectAsState()
-    val vehicles by fuelViewModel.vehicles.collectAsState()
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val screenWidth = maxWidth
+        val isWideScreen = screenWidth > 600.dp
+        
+        val context = LocalContext.current
+        val requests by baleViewModel.serviceRequests.collectAsState()
+        val isSubmitting by baleViewModel.isSubmitting.collectAsState()
+        val submissionMessage by baleViewModel.submissionMessage.collectAsState()
+        val vehicles by fuelViewModel.vehicles.collectAsState()
 
-    var showInsuranceDialog by remember { mutableStateOf(false) }
-    var showInquiryDialog by remember { mutableStateOf(false) }
-    var selectedInquiryType by remember { mutableStateOf("استعلام خلافی خودرو") }
-    var showFuelCardDialog by remember { mutableStateOf(false) }
-    var selectedFilterCategory by remember { mutableStateOf("همه") }
-    var selectedVehicleId by remember { mutableStateOf<Long?>(null) }
+        var showInsuranceDialog by remember { mutableStateOf(false) }
+        var showInquiryDialog by remember { mutableStateOf(false) }
+        var selectedInquiryType by remember { mutableStateOf("استعلام خلافی خودرو") }
+        var showFuelCardDialog by remember { mutableStateOf(false) }
+        var selectedFilterCategory by remember { mutableStateOf("همه") }
+        var selectedVehicleId by remember { mutableStateOf<Long?>(null) }
 
-    LaunchedEffect(submissionMessage) {
-        if (submissionMessage != null) {
-            // Standard system Toast is removed completely.
-            // CustomAppNotificationBanner handles showing it beautifully at the top of MainActivity.
-        }
-    }
-
-    val defaultVehicle = vehicles.firstOrNull { it.id == selectedVehicleId } ?: vehicles.firstOrNull()
-
-    val filteredRequests = remember(requests, selectedFilterCategory) {
-        when (selectedFilterCategory) {
-            "بیمه" -> requests.filter { it.requestType.contains("بیمه") }
-            "استعلام و عوارض" -> requests.filter {
-                it.requestType.contains("خلافی") ||
-                it.requestType.contains("عوارض") ||
-                it.requestType.contains("مالیات")
+        LaunchedEffect(submissionMessage) {
+            if (submissionMessage != null) {
+                // Standard system Toast is removed completely.
+                // CustomAppNotificationBanner handles showing it beautifully at the top of MainActivity.
             }
-            "کارت سوخت" -> requests.filter { it.requestType.contains("کارت سوخت") }
-            "در انتظار تایید" -> requests.filter { it.status == ServiceRequestEntity.STATUS_PENDING }
-            "تایید شده" -> requests.filter { it.status == ServiceRequestEntity.STATUS_APPROVED }
-            else -> requests
         }
-    }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
+        val defaultVehicle = vehicles.firstOrNull { it.id == selectedVehicleId } ?: vehicles.firstOrNull()
+
+        val filteredRequests = remember(requests, selectedFilterCategory) {
+            when (selectedFilterCategory) {
+                "بیمه" -> requests.filter { it.requestType.contains("بیمه") }
+                "استعلام و عوارض" -> requests.filter {
+                    it.requestType.contains("خلافی") ||
+                    it.requestType.contains("عوارض") ||
+                    it.requestType.contains("مالیات")
+                }
+                "کارت سوخت" -> requests.filter { it.requestType.contains("کارت سوخت") }
+                "در انتظار تایید" -> requests.filter { it.status == ServiceRequestEntity.STATUS_PENDING }
+                "تایید شده" -> requests.filter { it.status == ServiceRequestEntity.STATUS_APPROVED }
+                else -> requests
+            }
+        }
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = if (isWideScreen) 32.dp else 16.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
         // --- 1. Header Banner ---
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
-            ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "سامانه درخواست خدمات و پیگیری",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "صدور و تمدید انواع بیمه‌نامه، استعلام جامع خلافی، عوارض و کارت سوخت با ثبت آنی و پیگیری مستقیم وضعیت",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary),
-                            contentAlignment = Alignment.Center
+        if (screenWidth > 360.dp) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                Icons.Default.Assignment,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(26.dp)
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "سامانه درخواست خدمات و پیگیری",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "صدور و تمدید انواع بیمه‌نامه، استعلام جامع خلافی، عوارض و کارت سوخت با ثبت آنی و پیگیری مستقیم وضعیت",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Assignment,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(26.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -214,71 +220,73 @@ fun BaleBotRequestScreen(
         }
 
         // --- 1.2 The 3-Cycling Colors Request Status Tracker ---
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-                border = BorderStroke(1.2.dp, Color(0xFF334155))
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+        if (screenWidth > 400.dp) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                    border = BorderStroke(1.2.dp, Color(0xFF334155))
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Icon(Icons.Default.Timeline, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
-                            Text("گردش کار سه‌رنگ درخواست‌های شما:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(Icons.Default.Timeline, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
+                                Text("گردش کار سه‌رنگ درخواست‌های شما:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                            }
+                            Text("پیگیری خودکار", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
                         }
-                        Text("پیگیری خودکار", fontSize = 10.5.sp, color = Color(0xFF94A3B8))
-                    }
 
-                    // The 3 Cycling Colors - Dark Mode Refined (پس‌زمینه تیره و حاشیه رنگی متمایز)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        // 1. Orange
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFF1E293B),
-                            border = BorderStroke(1.dp, Color(0xFFFB923C).copy(alpha = 0.6f)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFFFB923C)))
-                                Spacer(modifier = Modifier.height(3.dp))
-                                Text("۱. ثبت در صف", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFDBA74))
-                                Text("بررسی کارشناس", fontSize = 8.sp, color = Color(0xFFFED7AA))
+                        // The 3 Cycling Colors - Dark Mode Refined (پس‌زمینه تیره و حاشیه رنگی متمایز)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            // 1. Orange
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFF1E293B),
+                                border = BorderStroke(1.dp, Color(0xFFFB923C).copy(alpha = 0.6f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFFFB923C)))
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text("۱. ثبت در صف", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFDBA74))
+                                    Text("بررسی کارشناس", fontSize = 8.sp, color = Color(0xFFFED7AA))
+                                }
                             }
-                        }
-                        // 2. Blue
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFF1E293B),
-                            border = BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.6f)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF38BDF8)))
-                                Spacer(modifier = Modifier.height(3.dp))
-                                Text("۲. پردازش سیستمی", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7DD3FC))
-                                Text("استعلام مراجع", fontSize = 8.sp, color = Color(0xFFBAE6FD))
+                            // 2. Blue
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFF1E293B),
+                                border = BorderStroke(1.dp, Color(0xFF38BDF8).copy(alpha = 0.6f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF38BDF8)))
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text("۲. پردازش سیستمی", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF7DD3FC))
+                                    Text("استعلام مراجع", fontSize = 8.sp, color = Color(0xFFBAE6FD))
+                                }
                             }
-                        }
-                        // 3. Green
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Color(0xFF1E293B),
-                            border = BorderStroke(1.dp, Color(0xFF34D399).copy(alpha = 0.6f)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF34D399)))
-                                Spacer(modifier = Modifier.height(3.dp))
-                                Text("۳. صدور و تایید", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF86EFAC))
-                                Text("ارسال پیامک", fontSize = 8.sp, color = Color(0xFFA7F3D0))
+                            // 3. Green
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Color(0xFF1E293B),
+                                border = BorderStroke(1.dp, Color(0xFF34D399).copy(alpha = 0.6f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Column(modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF34D399)))
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text("۳. صدور و تایید", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFF86EFAC))
+                                    Text("ارسال پیامک", fontSize = 8.sp, color = Color(0xFFA7F3D0))
+                                }
                             }
                         }
                     }
@@ -368,10 +376,7 @@ fun BaleBotRequestScreen(
                 )
 
                 // Row 1: Fines & Negative Points
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                if (screenWidth < 400.dp) {
                     ServiceQuickButton(
                         title = "استعلام خلافی خودرو و موتور",
                         subtitle = "جرائم رانندگی و تسویه راهور",
@@ -381,7 +386,7 @@ fun BaleBotRequestScreen(
                             selectedInquiryType = "استعلام خلافی خودرو و موتورسیکلت"
                             showInquiryDialog = true
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
                     ServiceQuickButton(
                         title = "استعلام نمره منفی گواهی‌نامه",
@@ -392,15 +397,40 @@ fun BaleBotRequestScreen(
                             selectedInquiryType = "استعلام نمره منفی گواهی‌نامه"
                             showInquiryDialog = true
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ServiceQuickButton(
+                            title = "استعلام خلافی خودرو و موتور",
+                            subtitle = "جرائم رانندگی و تسویه راهور",
+                            icon = Icons.Default.ReceiptLong,
+                            color = Color(0xFFEF4444),
+                            onClick = {
+                                selectedInquiryType = "استعلام خلافی خودرو و موتورسیکلت"
+                                showInquiryDialog = true
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ServiceQuickButton(
+                            title = "استعلام نمره منفی گواهی‌نامه",
+                            subtitle = "سوابق نمره منفی راننده",
+                            icon = Icons.Default.Warning,
+                            color = Color(0xFFE11D48),
+                            onClick = {
+                                selectedInquiryType = "استعلام نمره منفی گواهی‌نامه"
+                                showInquiryDialog = true
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
                 // Row 2: Driving License Status & Technical Inspection
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                if (screenWidth < 400.dp) {
                     ServiceQuickButton(
                         title = "استعلام گواهی‌نامه و سوابق",
                         subtitle = "وضعیت اعتبار و کارت رانندگی",
@@ -410,7 +440,7 @@ fun BaleBotRequestScreen(
                             selectedInquiryType = "استعلام گواهی‌نامه و سوابق رانندگی"
                             showInquiryDialog = true
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
                     ServiceQuickButton(
                         title = "استعلام معاینه فنی خودرو",
@@ -421,8 +451,36 @@ fun BaleBotRequestScreen(
                             selectedInquiryType = "استعلام معاینه فنی خودرو"
                             showInquiryDialog = true
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     )
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ServiceQuickButton(
+                            title = "استعلام گواهی‌نامه و سوابق",
+                            subtitle = "وضعیت اعتبار و کارت رانندگی",
+                            icon = Icons.Default.Badge,
+                            color = Color(0xFF0284C7),
+                            onClick = {
+                                selectedInquiryType = "استعلام گواهی‌نامه و سوابق رانندگی"
+                                showInquiryDialog = true
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ServiceQuickButton(
+                            title = "استعلام معاینه فنی خودرو",
+                            subtitle = "اعتبار گواهی معاینه فنی",
+                            icon = Icons.Default.Verified,
+                            color = Color(0xFF10B981),
+                            onClick = {
+                                selectedInquiryType = "استعلام معاینه فنی خودرو"
+                                showInquiryDialog = true
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
 
                 // Row 3: Vehicle Documents & Highway Tolls
@@ -571,7 +629,11 @@ fun BaleBotRequestScreen(
         } else {
             items(filteredRequests, key = { it.id }) { req ->
                 RequestCardItem(
-                    request = req
+                    request = req,
+                    onDelete = {
+                        baleViewModel.deleteRequest(req)
+                        com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("درخواست از سوابق حذف شد")
+                    }
                 )
             }
         }
@@ -664,6 +726,7 @@ fun BaleBotRequestScreen(
         )
     }
 }
+}
 
 @Composable
 private fun ServiceQuickButton(
@@ -734,22 +797,23 @@ private fun ServiceQuickButton(
 
 @Composable
 private fun RequestCardItem(
-    request: ServiceRequestEntity
+    request: ServiceRequestEntity,
+    onDelete: () -> Unit
 ) {
     val context = LocalContext.current
 
-    val isPending = request.status == ServiceRequestEntity.STATUS_PENDING
-    val isApproved = request.status == ServiceRequestEntity.STATUS_APPROVED
-    val isRejected = request.status == ServiceRequestEntity.STATUS_REJECTED
+    val isPending by remember(request.status) { derivedStateOf { request.status.contains("انتظار") } }
+    val isApproved by remember(request.status) { derivedStateOf { request.status.contains("تایید") } }
+    val isRejected by remember(request.status) { derivedStateOf { request.status.contains("رد") } }
 
     // Dynamic rotating ticker messages for pending state
     var currentMessageIndex by remember { mutableIntStateOf(0) }
     val waitingMessages = remember {
         listOf(
-            "⏳ در حال بررسی و تطبیق اطلاعات توسط کارشناس و مدیر...",
-            "📡 اطلاعات برای کارشناس ارشد ارسال شد؛ منتظر بررسی...",
-            "👤 کارشناس به زودی نتیجه بررسی مدارک را ثبت خواهد نمود.",
-            "⚡ وضعیت با تایید مدیریت سامانه بلافاصله بروزرسانی و رنگی خواهد شد."
+            "در حال بررسی و تطبیق اطلاعات توسط کارشناس و مدیر...",
+            "اطلاعات برای کارشناس ارشد ارسال شد؛ منتظر بررسی...",
+            "کارشناس به زودی نتیجه بررسی مدارک را ثبت خواهد نمود.",
+            "وضعیت با تایید مدیریت سامانه بلافاصله بروزرسانی و رنگی خواهد شد."
         )
     }
 
@@ -774,23 +838,23 @@ private fun RequestCardItem(
     val statusBorder by animateColorAsState(targetBorder, animationSpec = tween(1200, easing = FastOutSlowInEasing), label = "statusBorder")
 
     val statusTitle = when {
-        isApproved -> "تایید شده توسط کارشناس و مدیر ✅"
-        isPending -> "در حال بررسی توسط کارشناس ⏳"
-        else -> "عدم تایید مدارک ❌"
+        isApproved -> "تایید شده توسط کارشناس و مدیر"
+        isPending -> "در حال بررسی توسط کارشناس"
+        else -> "عدم تایید مدارک"
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        border = BorderStroke(1.2.dp, statusBorder)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = BorderStroke(1.dp, statusBorder)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             // Header: Title, Status Badge & In-app Delete Button
             Row(
@@ -806,26 +870,26 @@ private fun RequestCardItem(
                     }
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(28.dp)
                             .clip(CircleShape)
                             .background(statusBg),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(icon, contentDescription = null, tint = statusColor, modifier = Modifier.size(20.dp))
+                        Icon(icon, contentDescription = null, tint = statusColor, modifier = Modifier.size(16.dp))
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Column {
                         Text(
                             text = request.title,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 13.5.sp,
+                            fontSize = 12.sp,
                             color = Color.White
                         )
                         Text(
                             text = request.requestType,
                             style = MaterialTheme.typography.bodySmall,
-                            fontSize = 10.5.sp,
+                            fontSize = 9.5.sp,
                             color = Color(0xFF38BDF8)
                         )
                     }
@@ -833,22 +897,28 @@ private fun RequestCardItem(
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(6.dp),
                         color = statusBg,
-                        border = BorderStroke(0.8.dp, statusColor.copy(alpha = 0.4f))
+                        border = BorderStroke(0.7.dp, statusColor.copy(alpha = 0.4f))
                     ) {
                         Text(
                             text = statusTitle,
                             color = statusColor,
-                            fontSize = 10.sp,
+                            fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.5.dp)
                         )
                     }
 
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(24.dp)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "حذف", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(14.dp))
+                    }
                 }
             }
 
@@ -948,6 +1018,12 @@ private fun RequestCardItem(
                             Text("مدت: ${request.durationMonths} ماه | تخفیف: ${request.discountPercent}٪", fontSize = 10.sp, color = Color(0xFF38BDF8))
                         }
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "آخرین بروزرسانی: ${PersianDateHelper.toPersianDateTime(request.updatedDateMillis)}",
+                        fontSize = 9.sp,
+                        color = Color(0xFF64748B)
+                    )
 
                     if (request.postalCode.isNotBlank() || request.address.isNotBlank()) {
                         Text(
@@ -1042,9 +1118,20 @@ private fun InsuranceFormDialog(
     var vehiclePlate by remember { mutableStateOf(defaultVehicle?.formattedPlate.orEmpty()) }
     var details by remember { mutableStateOf("") }
 
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val safeDismiss = {
+        keyboardController?.hide()
+        focusManager.clearFocus()
+        onDismiss()
+    }
+
     Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        onDismissRequest = safeDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = true
+        )
     ) {
         androidx.compose.runtime.CompositionLocalProvider(
             androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Rtl
@@ -1057,6 +1144,7 @@ private fun InsuranceFormDialog(
                 modifier = Modifier
                     .fillMaxWidth(0.94f)
                     .widthIn(max = 520.dp)
+                    .imePadding()
                     .padding(vertical = 12.dp)
             ) {
                 Column(modifier = Modifier.fillMaxWidth()) {

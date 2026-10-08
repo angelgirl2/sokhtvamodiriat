@@ -1770,13 +1770,13 @@ private fun AddServiceHistoryDialog(
         icon = Icons.Default.BuildCircle,
         iconTint = MaterialTheme.colorScheme.primary
     ) {
-        LazyColumn(
+        Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
 
                 // Category selector
-                item {
+                Column {
                     Text("نوع سرویس:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -1792,7 +1792,7 @@ private fun AddServiceHistoryDialog(
                 }
 
                 // Quick item checkboxes
-                item {
+                Column {
                     Text("اقلام تعویض شده در این سرویس:", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(4.dp))
 
@@ -1815,92 +1815,84 @@ private fun AddServiceHistoryDialog(
                 }
 
                 // Odometer & Next Due Odometer
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = odometer,
-                            onValueChange = {
-                                odometer = it
-                                val current = it.toIntOrNull() ?: vehicle.currentOdometer
-                                nextOdometer = (current + 6000).toString()
-                            },
-                            label = { Text("کیلومتر فعلی") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f),
-                            singleLine = true
-                        )
-
-                        OutlinedTextField(
-                            value = nextOdometer,
-                            onValueChange = { nextOdometer = it },
-                            label = { Text("کیلومتر بعدی") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f),
-                            singleLine = true
-                        )
-                    }
-                }
-
-                // Cost & Mechanic
-                item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = costInput,
-                            onValueChange = { costInput = it },
-                            label = { Text("هزینه (تومان)") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f),
-                            singleLine = true
-                        )
-
-                        OutlinedTextField(
-                            value = shopName,
-                            onValueChange = { shopName = it },
-                            label = { Text("نام تعویض‌روغنی/تعمیرگاه") },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true
-                        )
-                    }
-                }
-
-                // Notes
-                item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
                     OutlinedTextField(
-                        value = notes,
-                        onValueChange = { notes = it },
-                        label = { Text("توضیحات و برند روغن/لنت (اختیاری)") },
-                        modifier = Modifier.fillMaxWidth(),
+                        value = odometer,
+                        onValueChange = {
+                            odometer = it
+                            val current = it.toIntOrNull() ?: vehicle.currentOdometer
+                            nextOdometer = (current + 6000).toString()
+                        },
+                        label = { Text("کیلومتر فعلی") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = nextOdometer,
+                        onValueChange = { nextOdometer = it },
+                        label = { Text("کیلومتر بعدی") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
                         singleLine = true
                     )
                 }
 
-                // Action Buttons
-                item {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Button(
-                        onClick = {
-                            val odo = odometer.toIntOrNull() ?: vehicle.currentOdometer
-                            val nextOdo = nextOdometer.toIntOrNull() ?: (odo + 6000)
-                            val cost = costInput.toLongOrNull() ?: 0L
-                            val finalItems = if (builtItems.isNotBlank()) builtItems else selectedCategory
-                            onConfirm(selectedCategory, finalItems, odo, nextOdo, System.currentTimeMillis(), cost, shopName, notes)
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("ثبت در دفترچه سرویس خودرو")
-                    }
+                // Cost & Mechanic
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = costInput,
+                        onValueChange = { costInput = it },
+                        label = { Text("هزینه (تومان)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
+
+                    OutlinedTextField(
+                        value = shopName,
+                        onValueChange = { shopName = it },
+                        label = { Text("نام تعویض‌روغنی/تعمیرگاه") },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
+                    )
                 }
-            }
+
+                // Notes
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    label = { Text("توضیحات و برند روغن/لنت (اختیاری)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                // Action Buttons
+                Spacer(modifier = Modifier.height(4.dp))
+                Button(
+                    onClick = {
+                        val odo = odometer.toIntOrNull() ?: vehicle.currentOdometer
+                        val nextOdo = nextOdometer.toIntOrNull() ?: (odo + 6000)
+                        val cost = costInput.toLongOrNull() ?: 0L
+                        val finalItems = if (builtItems.isNotBlank()) builtItems else selectedCategory
+                        onConfirm(selectedCategory, finalItems, odo, nextOdo, System.currentTimeMillis(), cost, shopName, notes)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("ثبت در دفترچه سرویس خودرو")
+                }
         }
+    }
 }
 
 // =======================================================================================

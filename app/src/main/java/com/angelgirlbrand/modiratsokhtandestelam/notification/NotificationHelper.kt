@@ -46,11 +46,16 @@ class NotificationHelper(private val context: Context) {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
 
+            // Remove all emojis from title and message as requested
+            val emojiRegex = Regex("[\\uD83C-\\uDBFF\\uDC00-\\uDFFF\\u2600-\\u26FF\\u2700-\\u27BF\\uFE00-\\uFE0F\\p{So}]")
+            val cleanTitle = title.replace(emojiRegex, "").trim()
+            val cleanMessage = message.replace(emojiRegex, "").trim()
+
             val notification = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("🚗 یادآور خودرو: $title")
-                .setContentText(message)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+                .setContentTitle(if (cleanTitle.isNotEmpty()) "یادآور خودرو: $cleanTitle" else "یادآور خودرو")
+                .setContentText(cleanMessage)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(cleanMessage))
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)

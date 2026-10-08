@@ -11,7 +11,10 @@ object AppToast {
     private val _messageFlow = MutableSharedFlow<String>(extraBufferCapacity = 15)
     val messageFlow = _messageFlow.asSharedFlow()
 
+    private val emojiRegex = Regex("[\\uD83C-\\uDBFF\\uDC00-\\uDFFF\\u2600-\\u26FF\\u2700-\\u27BF\\uFE00-\\uFE0F\\p{So}]")
+
     fun show(message: String) {
-        _messageFlow.tryEmit(message)
+        val cleanMessage = message.replace(emojiRegex, "").trim()
+        _messageFlow.tryEmit(cleanMessage)
     }
 }

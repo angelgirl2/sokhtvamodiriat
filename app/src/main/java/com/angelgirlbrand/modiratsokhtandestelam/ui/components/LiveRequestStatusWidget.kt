@@ -271,7 +271,7 @@ fun LiveRequestStatusWidget(
 
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = "تمام سامانه‌ها پایدار و فعال هستند ✅",
+                                text = "تمام سامانه‌ها پایدار و فعال هستند",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color(0xFF34D399)

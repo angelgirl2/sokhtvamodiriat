@@ -29,9 +29,22 @@ data class ServiceRequestEntity(
     val submissionDateMillis: Long = System.currentTimeMillis(),
     val updatedDateMillis: Long = System.currentTimeMillis()
 ) {
+    val isApproved: Boolean
+        get() = status == STATUS_APPROVED ||
+                status.contains("تایید") ||
+                status.contains("صادر") ||
+                status.contains("پرداخت") ||
+                status.contains("موفق")
+
+    val isRejected: Boolean
+        get() = status == STATUS_REJECTED || status.contains("رد")
+
+    val isPending: Boolean
+        get() = !isApproved && !isRejected
+
     companion object {
-        const val STATUS_PENDING = "در انتظار تایید مدیر"
-        const val STATUS_APPROVED = "تایید شد و برای شما اطلاعات ارسال میگردد"
-        const val STATUS_REJECTED = "رد شده - نیاز به بررسی مجدد"
+        const val STATUS_PENDING = "در انتظار بررسی"
+        const val STATUS_APPROVED = "تایید شده"
+        const val STATUS_REJECTED = "رد شده"
     }
 }

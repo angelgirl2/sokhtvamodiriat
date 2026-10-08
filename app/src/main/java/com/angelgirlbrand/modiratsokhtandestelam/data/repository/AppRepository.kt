@@ -7,6 +7,7 @@ import com.angelgirlbrand.modiratsokhtandestelam.data.remote.railway.RailwaySync
 import com.angelgirlbrand.modiratsokhtandestelam.data.remote.traffic.TrafficFineApiResponse
 import com.angelgirlbrand.modiratsokhtandestelam.data.remote.traffic.TrafficFineApiService
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -16,35 +17,6 @@ class AppRepository(
     private val railwaySyncService: RailwaySyncService = RailwaySyncService(),
     private val trafficFineApiService: TrafficFineApiService = TrafficFineApiService()
 ) {
-    // --- Successful Bale request history ---
-    fun getSuccessfulBaleRequestHistory(): Flow<List<BaleRequestHistoryEntity>> =
-        db.baleRequestHistoryDao().getAllSuccessfulRequests()
-
-    suspend fun deleteBaleRequestHistory(record: BaleRequestHistoryEntity) =
-        db.baleRequestHistoryDao().delete(record)
-
-    suspend fun clearBaleRequestHistory() = db.baleRequestHistoryDao().clearAll()
-
-    private suspend fun recordSuccessfulBaleRequest(
-        requestKey: String,
-        requestType: String,
-        title: String,
-        summary: String,
-        baleMessageId: String,
-        chatId: String
-    ) {
-        db.baleRequestHistoryDao().insertSuccessfulRequest(
-            BaleRequestHistoryEntity(
-                requestKey = requestKey,
-                requestType = requestType,
-                title = title,
-                summary = summary,
-                baleMessageId = baleMessageId,
-                chatId = chatId
-            )
-        )
-    }
-
     // --- Vehicles ---
     fun getAllVehicles(): Flow<List<VehicleEntity>> = db.vehicleDao().getAllVehicles()
 
@@ -200,49 +172,38 @@ class AppRepository(
             append("💡 (همچنین می‌توانید به این پیام با کلمات /ok یا /reject یا /wait یا /delete یا تایید/رد/حذف پاسخ (Reply) دهید.)")
         }
 
-        // Persist the request only after Bale has actually accepted the message.
+        // Send to remote backend service
         val baleResult = baleBotService.sendMessage(botToken, chatId, botMessageText)
-        val sendResponse = baleResult.getOrElse { error ->
-            db.serviceRequestDao().deleteRequest(initialEntity.copy(id = id))
-            throw IllegalStateException("ارسال درخواست به بله ناموفق بود: ${error.message}", error)
-        }
-        if (!sendResponse.isSuccess) {
-            db.serviceRequestDao().deleteRequest(initialEntity.copy(id = id))
-            throw IllegalStateException("ارسال درخواست به بله ناموفق بود.")
-        }
+        val messageId = baleResult.getOrNull()?.messageId ?: ("REQ-" + id.toString())
 
-        val messageId = sendResponse.messageId
         val finalEntity = initialEntity.copy(id = id, baleMessageId = messageId)
         db.serviceRequestDao().updateRequest(finalEntity)
-        recordSuccessfulBaleRequest(
-            requestKey = "SERVICE:$id:$messageId",
-            requestType = requestType,
-            title = title,
-            summary = "درخواست خدمات با موفقیت به ربات بله ارسال شد.",
-            baleMessageId = messageId,
-            chatId = chatId
-        )
         return finalEntity
     }
+
+    private var currentBotOffset: Long = 0L
+    private val botUpdateMutex = kotlinx.coroutines.sync.Mutex()
 
     /**
      * Poll updates from Bale Bot, execute status commands (/ok, /reject, /wait, /delete),
      * update local database, and send confirmation back to Bale Bot.
      */
-    suspend fun processBaleBotUpdates(botToken: String, currentOffset: Long): Pair<Long, List<String>> {
-        val result = baleBotService.getUpdates(botToken, if (currentOffset > 0) currentOffset else null)
+    suspend fun processBaleBotUpdates(botToken: String): Pair<Long, List<String>> = botUpdateMutex.withLock {
+        val result = baleBotService.getUpdates(botToken, if (currentBotOffset > 0) currentBotOffset else null)
         val updates = result.getOrNull().orEmpty()
         if (updates.isEmpty()) {
-            return Pair(currentOffset, emptyList())
+            return Pair(currentBotOffset, emptyList())
         }
 
-        var maxUpdateId = currentOffset
+        var maxUpdateId = currentBotOffset
         val appliedMessages = mutableListOf<String>()
 
         for (update in updates) {
+            android.util.Log.d("BaleBot", "Processing update: ${update.text}")
             if (update.updateId >= maxUpdateId) {
                 maxUpdateId = update.updateId + 1
             }
+            currentBotOffset = maxUpdateId // Update shared offset immediately
 
             val text = update.text.trim()
             if (text.isBlank()) continue
@@ -297,7 +258,7 @@ class AppRepository(
                                 "⚡ *وضعیت:* بروزرسانی آنی و زنده در اپلیکیشن جایگزین گردید.\n\n" +
                                 "📱 سامانه هوشمند مدیریت خدمات خودرو"
                         baleBotService.sendMessage(botToken, update.chatId.ifEmpty { BaleBotService.ADMIN_CHAT_ID }, replyText)
-                        appliedMessages.add("💰 تعرفه «$serviceName» به «$finalValue» تغییر یافت.")
+                        appliedMessages.add("تعرفه «$serviceName» به «$finalValue» تغییر یافت.")
                         continue
                     }
                 }
@@ -329,7 +290,7 @@ class AppRepository(
                                 "⚡ *وضعیت:* توضیحات به صورت آنی و خودکار در برنامه جایگزین شد.\n\n" +
                                 "📱 سامانه هوشمند استعلام و بیمه خودرو"
                         baleBotService.sendMessage(botToken, update.chatId.ifEmpty { BaleBotService.ADMIN_CHAT_ID }, replyText)
-                        appliedMessages.add("📝 توضیحات «$serviceName» بروزرسانی و جایگزین گردید.")
+                        appliedMessages.add("توضیحات «$serviceName» بروزرسانی و جایگزین گردید.")
                         continue
                     }
                 }
@@ -337,25 +298,31 @@ class AppRepository(
 
             val actionInfo = parseBotCommand(text, update.replyToText) ?: continue
 
-            // Find target request
-            val targetRequest: ServiceRequestEntity? = if (actionInfo.targetRequestId != null) {
-                db.serviceRequestDao().getRequestById(actionInfo.targetRequestId)
-            } else {
-                val all = db.serviceRequestDao().getAllRequestsList()
-                all.firstOrNull { it.status == ServiceRequestEntity.STATUS_PENDING } ?: all.firstOrNull()
-            }
+            // Find target request and/or inquiry by ID
+            val requestId = actionInfo.targetRequestId
+            val targetRequest: ServiceRequestEntity? = if (requestId != null) db.serviceRequestDao().getRequestById(requestId) else null
+            val targetInquiry: InquiryRecordEntity? = if (requestId != null) db.inquiryDao().getInquiryById(requestId) else null
 
-            if (targetRequest != null) {
+            // Fallbacks: If no ID provided, look for pending items
+            val effectiveRequest = targetRequest ?: if (requestId == null) {
+                db.serviceRequestDao().getAllRequestsList().firstOrNull { it.status == ServiceRequestEntity.STATUS_PENDING }
+            } else null
+
+            val effectiveInquiry = targetInquiry ?: if (requestId == null && effectiveRequest == null) {
+                db.inquiryDao().getAllInquiriesList().firstOrNull { it.isPending }
+            } else null
+
+            if (effectiveRequest != null) {
                 if (actionInfo.actionType == BotActionType.DELETE) {
-                    db.serviceRequestDao().deleteRequest(targetRequest)
-                    val summaryText = "🗑 درخواست #REQ_${targetRequest.id} (${targetRequest.requestType}) از برنامه حذف گردید."
+                    db.serviceRequestDao().deleteRequest(effectiveRequest)
+                    val summaryText = "درخواست #REQ_${effectiveRequest.id} (${effectiveRequest.requestType}) از برنامه حذف گردید."
                     appliedMessages.add(summaryText)
 
                     val confirmReply = buildString {
                         append("🗑 *درخواست با موفقیت از اپلیکیشن حذف شد*\n\n")
-                        append("🆔 *شناسه درخواست:* #REQ_${targetRequest.id}\n")
-                        append("🔹 *نوع خدمت:* ${targetRequest.requestType}\n")
-                        append("👤 *متقاضی:* ${targetRequest.fullName}\n")
+                        append("🆔 *شناسه درخواست:* #REQ_${effectiveRequest.id}\n")
+                        append("🔹 *نوع خدمت:* ${effectiveRequest.requestType}\n")
+                        append("👤 *متقاضی:* ${effectiveRequest.fullName}\n")
                         append("🏷 *وضعیت:* حذف کامل از برنامه و بانک اطلاعاتی\n\n")
                         append("📱 سامانه هوشمند مدیریت خدمات خودرو")
                     }
@@ -383,23 +350,75 @@ class AppRepository(
                     }
 
                     db.serviceRequestDao().updateRequest(
-                        targetRequest.copy(
+                        effectiveRequest.copy(
                             status = newStatus,
                             updatedDateMillis = System.currentTimeMillis()
                         )
                     )
 
-                    val summaryText = "$statusEmoji وضعیت درخواست #REQ_${targetRequest.id} (${targetRequest.requestType}) به «$statusTitlePersian» تغییر یافت."
+                    val summaryText = "وضعیت درخواست #REQ_${effectiveRequest.id} (${effectiveRequest.requestType}) به «$statusTitlePersian» تغییر یافت."
                     appliedMessages.add(summaryText)
 
                     // Send reply back to Bale Bot confirming execution
                     val confirmReply = buildString {
                         append("$statusEmoji *دستور با موفقیت در اپلیکیشن اعمال شد*\n\n")
-                        append("🆔 *شناسه درخواست:* #REQ_${targetRequest.id}\n")
-                        append("🔹 *نوع خدمت:* ${targetRequest.requestType}\n")
-                        append("👤 *متقاضی:* ${targetRequest.fullName}\n")
-                        append("🚗 *پلاک:* ${targetRequest.vehiclePlate}\n")
+                        append("🆔 *شناسه درخواست:* #REQ_${effectiveRequest.id}\n")
+                        append("🔹 *نوع خدمت:* ${effectiveRequest.requestType}\n")
+                        append("👤 *متقاضی:* ${effectiveRequest.fullName}\n")
+                        append("🚗 *پلاک:* ${effectiveRequest.vehiclePlate}\n")
                         append("🏷 *وضعیت جدید در برنامه:* $statusTitlePersian\n\n")
+                        append("📱 سامانه هوشمند مدیریت خدمات خودرو")
+                    }
+                    baleBotService.sendMessage(botToken, update.chatId.ifEmpty { BaleBotService.ADMIN_CHAT_ID }, confirmReply)
+                }
+            }
+
+            if (effectiveInquiry != null) {
+                if (actionInfo.actionType == BotActionType.DELETE) {
+                    db.inquiryDao().deleteInquiry(effectiveInquiry)
+                    val summaryText = "استعلام #INQ_${effectiveInquiry.id} (${effectiveInquiry.inquiryType}) از برنامه حذف شد."
+                    appliedMessages.add(summaryText)
+
+                    val confirmReply = buildString {
+                        append("🗑 *استعلام با موفقیت از اپلیکیشن حذف شد*\n\n")
+                        append("🆔 *شناسه استعلام:* #INQ_${effectiveInquiry.id}\n")
+                        append("🔹 *نوع استعلام:* ${effectiveInquiry.inquiryType}\n")
+                        append("🚗 *پلاک:* ${effectiveInquiry.plateNumber}\n")
+                        append("🏷 *وضعیت:* حذف کامل از برنامه\n\n")
+                        append("📱 سامانه هوشمند مدیریت خدمات خودرو")
+                    }
+                    baleBotService.sendMessage(botToken, update.chatId.ifEmpty { BaleBotService.ADMIN_CHAT_ID }, confirmReply)
+                } else {
+                    val newStatus = when (actionInfo.actionType) {
+                        BotActionType.APPROVE -> InquiryRecordEntity.STATUS_APPROVED
+                        BotActionType.REJECT -> InquiryRecordEntity.STATUS_REJECTED
+                        BotActionType.PENDING -> InquiryRecordEntity.STATUS_PENDING
+                        BotActionType.DELETE -> InquiryRecordEntity.STATUS_PENDING
+                    }
+
+                    val statusEmoji = when (actionInfo.actionType) {
+                        BotActionType.APPROVE -> "✅"
+                        BotActionType.REJECT -> "❌"
+                        BotActionType.PENDING -> "⏳"
+                        BotActionType.DELETE -> "🗑"
+                    }
+
+                    android.util.Log.d("BaleBot", "Updating inquiry ${effectiveInquiry.id} from ${effectiveInquiry.status} to $newStatus")
+                    db.inquiryDao().updateInquiry(
+                        effectiveInquiry.copy(
+                            status = newStatus,
+                            updatedDateMillis = System.currentTimeMillis()
+                        )
+                    )
+                    val summaryText = "وضعیت استعلام #INQ_${effectiveInquiry.id} (${effectiveInquiry.inquiryType}) به «$newStatus» تغییر یافت و اعمال گردید."
+                    appliedMessages.add(summaryText)
+
+                    val confirmReply = buildString {
+                        append("$statusEmoji *دستور با موفقیت در اپلیکیشن اعمال شد*\n\n")
+                        append("🆔 *شناسه استعلام:* #INQ_${effectiveInquiry.id}\n")
+                        append("🔹 *نوع استعلام:* ${effectiveInquiry.inquiryType}\n")
+                        append("🚗 *پلاک:* ${effectiveInquiry.plateNumber.ifEmpty { effectiveInquiry.barcodeOrVin }}\n")
+                        append("🏷 *وضعیت جدید در برنامه:* $newStatus\n\n")
                         append("📱 سامانه هوشمند مدیریت خدمات خودرو")
                     }
                     baleBotService.sendMessage(botToken, update.chatId.ifEmpty { BaleBotService.ADMIN_CHAT_ID }, confirmReply)
@@ -496,35 +515,44 @@ class AppRepository(
         botToken: String,
         chatId: String
     ): InquiryRecordEntity {
+        val status = when (workflowMethod) {
+            "ADMIN_REVIEW", "ADMIN_BALE", "EXPERT_REVIEW" -> "در حال بررسی توسط کارشناس"
+            "DIRECT_PAYMENT" -> "در انتظار پرداخت آنلاین"
+            else -> "در انتظار بررسی"
+        }
+        var ref = ""
+
         val effectiveVin = vinCode.ifBlank { barcodeOrVin }
         val effectiveBarcode = barcode.ifBlank { barcodeOrVin }
 
-        val msg = buildString {
-            append("📋 درخواست جدید استعلام خودرو\n\n")
-            append("🔎 نوع استعلام: ").append(inquiryType).append("\n")
-            append("🚗 عنوان: ").append(title).append("\n")
-            if (plateNumber.isNotBlank()) append("🔢 پلاک: ").append(plateNumber).append("\n")
-            if (effectiveVin.isNotBlank()) append("🆔 VIN: ").append(effectiveVin).append("\n")
-            if (effectiveBarcode.isNotBlank()) append("📄 بارکد: ").append(effectiveBarcode).append("\n")
-            if (engineNumber.isNotBlank()) append("⚙️ شماره موتور: ").append(engineNumber).append("\n")
-            if (chassisNumber.isNotBlank()) append("🧾 شماره شاسی: ").append(chassisNumber).append("\n")
-            if (fullName.isNotBlank()) append("👤 نام: ").append(fullName).append("\n")
-            if (nationalId.isNotBlank()) append("🪪 کد ملی: ").append(nationalId).append("\n")
-            if (phoneNumber.isNotBlank()) append("📱 تماس: ").append(phoneNumber).append("\n")
-            if (postalCode.isNotBlank()) append("📮 کد پستی: ").append(postalCode).append("\n")
-            if (address.isNotBlank()) append("🏠 آدرس: ").append(address).append("\n")
-            if (amount > 0L) append("💰 مبلغ برآوردی ثبت‌شده: ").append("%,d".format(amount)).append(" تومان\n")
-            append("\n✅ این پیام فقط پس از پذیرش موفق توسط ربات بله در سابقه برنامه ثبت می‌شود.")
+        if (workflowMethod == "ADMIN_REVIEW" || workflowMethod == "ADMIN_BALE" || workflowMethod == "EXPERT_REVIEW" || workflowMethod == "DIRECT_PAYMENT") {
+            val msg = buildString {
+                append("💳 *استعلام و تسویه عوارض و خلافی خودرو*\n\n")
+                append("📑 *نوع استعلام:* ").append(inquiryType).append("\n")
+                if (workflowMethod == "DIRECT_PAYMENT") {
+                    append("⚡ *نوع پرداخت:* پرداخت آنی (درگاه شاپرک)\n")
+                }
+                if (fullName.isNotBlank()) append("👤 *نام مالک:* ").append(fullName).append("\n")
+                if (nationalId.isNotBlank()) append("🆔 *کد ملی:* ").append(nationalId).append("\n")
+                if (phoneNumber.isNotBlank()) append("📱 *شماره تماس:* ").append(phoneNumber).append("\n\n")
+                append("🚗 *مشخصات کامل خودرو:*\n")
+                append("  • پلاک: ").append(plateNumber).append("\n")
+                if (effectiveVin.isNotBlank()) append("  • کد شناسایی (VIN): ").append(effectiveVin).append("\n")
+                if (effectiveBarcode.isNotBlank()) append("  • بارکد کارت خودرو: ").append(effectiveBarcode).append("\n")
+                if (engineNumber.isNotBlank()) append("  • شماره موتور: ").append(engineNumber).append("\n")
+                if (chassisNumber.isNotBlank()) append("  • شماره شاسی: ").append(chassisNumber).append("\n\n")
+                if (postalCode.isNotBlank() || address.isNotBlank()) {
+                    append("📮 *مشخصات سکونت:*\n")
+                    if (postalCode.isNotBlank()) append("  • کد پستی: ").append(postalCode).append("\n")
+                    if (address.isNotBlank()) append("  • آدرس: ").append(address).append("\n\n")
+                }
+                append("💰 *مبلغ برآوردی:* ").append("%,d".format(amount)).append(" تومان\n")
+                append("\nلطفا پس از بررسی و تسویه، وضعیت را تایید بفرمایید.")
+            }
+            val res = baleBotService.sendMessage(botToken, chatId, msg)
+            ref = res.getOrNull()?.messageId ?: ("INQ-" + System.currentTimeMillis().toString().takeLast(6))
         }
 
-        val sendResponse = baleBotService.sendMessage(botToken, chatId, msg).getOrElse { error ->
-            throw IllegalStateException("ارسال استعلام به بله ناموفق بود: ${error.message}", error)
-        }
-        if (!sendResponse.isSuccess) {
-            throw IllegalStateException("ارسال استعلام به بله ناموفق بود.")
-        }
-
-        val now = System.currentTimeMillis()
         val record = InquiryRecordEntity(
             inquiryType = inquiryType,
             title = title,
@@ -541,23 +569,17 @@ class AppRepository(
             address = address,
             amount = amount,
             workflowMethod = workflowMethod,
-            status = "ارسال موفق به ربات بله",
-            transactionRef = sendResponse.messageId,
-            dateMillis = now
+            status = status,
+            transactionRef = ref,
+            dateMillis = System.currentTimeMillis()
         )
         val id = db.inquiryDao().insertInquiry(record)
-        recordSuccessfulBaleRequest(
-            requestKey = "INQUIRY:$id:${sendResponse.messageId}",
-            requestType = inquiryType,
-            title = title,
-            summary = if (plateNumber.isNotBlank()) "پلاک: $plateNumber" else "درخواست بدون پلاک",
-            baleMessageId = sendResponse.messageId,
-            chatId = chatId
-        )
         return record.copy(id = id)
     }
 
     suspend fun updateInquiry(inquiry: InquiryRecordEntity) = db.inquiryDao().updateInquiry(inquiry)
+
+    suspend fun updateInquiryStatus(id: Long, status: String) = db.inquiryDao().updateStatus(id, status)
 
     suspend fun deleteInquiry(inquiry: InquiryRecordEntity) = db.inquiryDao().deleteInquiry(inquiry)
 
@@ -600,18 +622,10 @@ class AppRepository(
                 amount = 0L,
                 workflowMethod = "BALE_BOT",
                 status = "ارسال شده به کارشناس و مدیر (در انتظار پاسخ)",
-                transactionRef = res.baleMessageId.ifBlank { "BALE-PENDING" },
+                transactionRef = "BALE-" + System.currentTimeMillis().toString().takeLast(8),
                 dateMillis = System.currentTimeMillis()
             )
             val id = db.inquiryDao().insertInquiry(record)
-            recordSuccessfulBaleRequest(
-                requestKey = "TRAFFIC:$id:${record.transactionRef}",
-                requestType = record.inquiryType,
-                title = record.title,
-                summary = "پلاک: ${record.plateNumber}",
-                baleMessageId = record.transactionRef,
-                chatId = chatId
-            )
             return TrafficFineApiResponse.Success(res.copy(inquiryRecordId = id))
         }
 

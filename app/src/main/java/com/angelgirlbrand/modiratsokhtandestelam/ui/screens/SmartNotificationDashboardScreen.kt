@@ -87,7 +87,7 @@ fun SmartNotificationDashboardScreen(
             putBoolean("floating_banner", isFloatingBannerEnabled)
             apply()
         }
-        com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("⚙️ تنظیمات شخصی‌سازی اعلان‌ها با موفقیت ذخیره گردید")
+        com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("تنظیمات شخصی‌سازی اعلان‌ها با موفقیت ذخیره گردید")
     }
 
     var isVisible by remember { mutableStateOf(false) }

@@ -63,8 +63,6 @@ class TariffViewModel(
 
     private val _recentlyUpdatedKeys = MutableStateFlow<Set<String>>(emptySet())
 
-    private var currentBotOffset: Long = 0L
-
     // Combines real-time tariff data from PriceManager with search & category filters
     val uiState: StateFlow<TariffUiState> = combine(
         PriceManager.tariffDataState,
@@ -130,29 +128,23 @@ class TariffViewModel(
 
     init {
         priceManager.updateStateFlow()
-        startLiveExternalSync()
     }
 
     /**
-     * Polls the external Bale bot in the background to capture price & description updates
+     * Manual sync trigger if requested
      */
-    private fun startLiveExternalSync() {
+    fun syncOnce() {
         viewModelScope.launch {
-            while (true) {
-                try {
-                    val botToken = securityManager.getBaleBotToken()
-                    if (botToken.isNotBlank()) {
-                        val (newOffset, appliedList) = repository.processBaleBotUpdates(botToken, currentBotOffset)
-                        currentBotOffset = newOffset
-                        if (appliedList.isNotEmpty()) {
-                            priceManager.updateStateFlow()
-                            _syncStatusMessage.value = appliedList.firstOrNull()
-                        }
+            try {
+                val botToken = securityManager.getBaleBotToken()
+                if (botToken.isNotBlank()) {
+                    val (_, appliedList) = repository.processBaleBotUpdates(botToken)
+                    if (appliedList.isNotEmpty()) {
+                        priceManager.updateStateFlow()
+                        _syncStatusMessage.value = appliedList.firstOrNull()
                     }
-                } catch (_: Exception) {
-                    // Fail gracefully
                 }
-                delay(3000)
+            } catch (_: Exception) {
             }
         }
     }
@@ -249,8 +241,7 @@ class TariffViewModel(
             try {
                 _isSyncing.value = true
                 val botToken = securityManager.getBaleBotToken()
-                val (newOffset, appliedList) = repository.processBaleBotUpdates(botToken, currentBotOffset)
-                currentBotOffset = newOffset
+                val (_, appliedList) = repository.processBaleBotUpdates(botToken)
                 priceManager.updateStateFlow()
                 if (appliedList.isNotEmpty()) {
                     _syncStatusMessage.value = "تعرفه‌ها و توضیحات با موفقیت بروزرسانی شدند."

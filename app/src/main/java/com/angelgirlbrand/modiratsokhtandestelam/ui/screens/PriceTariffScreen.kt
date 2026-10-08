@@ -41,22 +41,25 @@ fun PriceTariffScreen(
     ),
     modifier: Modifier = Modifier
 ) {
-    val uiState by tariffViewModel.uiState.collectAsState()
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val screenWidth = maxWidth
+        val isWideScreen = screenWidth > 600.dp
+        val uiState by tariffViewModel.uiState.collectAsState()
 
-    LaunchedEffect(uiState.syncStatusMessage) {
-        uiState.syncStatusMessage?.let { msg ->
-            AppToast.show(msg)
-            tariffViewModel.clearStatusMessage()
+        LaunchedEffect(uiState.syncStatusMessage) {
+            uiState.syncStatusMessage?.let { msg ->
+                AppToast.show(msg)
+                tariffViewModel.clearStatusMessage()
+            }
         }
-    }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(top = 16.dp, bottom = 90.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = if (isWideScreen) 32.dp else 16.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 90.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
         // --- 1. Header Banner ---
         item {
             Card(
@@ -256,4 +259,5 @@ fun PriceTariffScreen(
             )
         }
     }
+}
 }
