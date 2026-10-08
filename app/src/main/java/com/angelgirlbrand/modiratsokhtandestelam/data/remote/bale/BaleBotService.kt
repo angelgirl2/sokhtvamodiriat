@@ -9,6 +9,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 data class BaleUpdate(
@@ -32,6 +33,9 @@ class BaleBotService(
         const val BOT_TOKEN = "1882791239:LbdEo9wCRmyaYo0_mQCSR_XtCUc0RDobd6g"
         const val ADMIN_CHAT_ID = "116268751"
         const val BALE_API_BASE_URL = "https://tapi.bale.ai/bot"
+
+        private const val DUPLICATE_WINDOW_MS = 12_000L
+        private val recentSuccessfulMessages = ConcurrentHashMap<String, Long>()
     }
 
     suspend fun sendMessage(
@@ -39,6 +43,15 @@ class BaleBotService(
         chatId: String,
         text: String
     ): Result<BaleSendResponse> = withContext(Dispatchers.IO) {
+        val fingerprint = "$chatId\u0000$text"
+        val now = System.currentTimeMillis()
+        val previousSuccessAt = recentSuccessfulMessages[fingerprint]
+        if (previousSuccessAt != null && now - previousSuccessAt < DUPLICATE_WINDOW_MS) {
+            return@withContext Result.failure(
+                IllegalStateException("این درخواست همین چند لحظه قبل با موفقیت به بله ارسال شده است.")
+            )
+        }
+
         try {
             val url = "$BALE_API_BASE_URL$botToken/sendMessage"
             val jsonObject = JSONObject().apply {
@@ -60,29 +73,25 @@ class BaleBotService(
                 val json = JSONObject(responseBody)
                 val ok = json.optBoolean("ok", false)
                 val resultObj = json.optJSONObject("result")
-                val messageId = resultObj?.optLong("message_id") ?: System.currentTimeMillis()
-                Result.success(BaleSendResponse(isSuccess = ok, messageId = messageId.toString(), rawResponse = responseBody))
-            } else {
-                // Return structured response even if network endpoint is unreachable, so offline/live queuing works
-                val generatedId = "SR-" + System.currentTimeMillis().toString().takeLast(6)
-                Result.success(
-                    BaleSendResponse(
-                        isSuccess = true,
-                        messageId = generatedId,
-                        rawResponse = "ارسال شده به سرور رسیدگی (کد رهگیری: $generatedId)"
+                val messageId = resultObj?.optLong("message_id") ?: 0L
+                if (ok && messageId > 0L) {
+                    recentSuccessfulMessages[fingerprint] = now
+                    recentSuccessfulMessages.entries.removeIf { now - it.value > DUPLICATE_WINDOW_MS * 4 }
+                    return@withContext Result.success(
+                        BaleSendResponse(isSuccess = true, messageId = messageId.toString(), rawResponse = responseBody)
                     )
+                }
+                return@withContext Result.failure(
+                    IllegalStateException("بله درخواست را نپذیرفت. پاسخ سرور معتبر نبود.")
                 )
             }
+
+            Result.failure(
+                IllegalStateException("ارسال به بله انجام نشد (HTTP ${response.code}).")
+            )
         } catch (e: Exception) {
             Log.e("BaleBotService", "Error sending request", e)
-            val generatedId = "SR-LOCAL-" + System.currentTimeMillis().toString().takeLast(6)
-            Result.success(
-                BaleSendResponse(
-                    isSuccess = true,
-                    messageId = generatedId,
-                    rawResponse = "درخواست به صورت محلی ثبت و به صف رسیدگی افزوده شد."
-                )
-            )
+            Result.failure(e)
         }
     }
 
@@ -120,16 +129,19 @@ class BaleBotService(
                     val json = JSONObject(responseBody)
                     val ok = json.optBoolean("ok", false)
                     val resultObj = json.optJSONObject("result")
-                    val messageId = resultObj?.optLong("message_id") ?: System.currentTimeMillis()
-                    return@withContext Result.success(
-                        BaleSendResponse(isSuccess = ok, messageId = messageId.toString(), rawResponse = responseBody)
-                    )
+                    val messageId = resultObj?.optLong("message_id") ?: 0L
+                    if (ok && messageId > 0L) {
+                        return@withContext Result.success(
+                            BaleSendResponse(isSuccess = true, messageId = messageId.toString(), rawResponse = responseBody)
+                        )
+                    }
+                    return@withContext Result.failure(IllegalStateException("بله عکس را نپذیرفت."))
                 }
             }
-            return@withContext sendMessage(botToken, chatId, caption)
+            return@withContext Result.failure(IllegalArgumentException("فایلی برای ارسال وجود ندارد."))
         } catch (e: Exception) {
             Log.e("BaleBotService", "Error sending photo", e)
-            return@withContext sendMessage(botToken, chatId, caption)
+            return@withContext Result.failure(e)
         }
     }
 

@@ -53,7 +53,14 @@ class TrafficFineApiService(
 
             Log.d(TAG, "Sending traffic fine inquiry to Bale Bot for plate: $plateFormatted")
             val sendResult = baleBotService.sendMessage(botToken, chatId, messageText)
-            val msgId = sendResult.getOrNull()?.messageId ?: trackingRef
+            val response = sendResult.getOrElse { error ->
+                return@withContext TrafficFineApiResponse.Error(
+                    "ارسال درخواست به ربات بله انجام نشد: ${error.message ?: "خطای نامشخص"}"
+                )
+            }
+            if (!response.isSuccess) {
+                return@withContext TrafficFineApiResponse.Error("ربات بله درخواست را نپذیرفت.")
+            }
 
             val result = TrafficFineResult(
                 vehicleTitle = vehicleTitle,
@@ -62,28 +69,20 @@ class TrafficFineApiService(
                 totalAmount = 0L,
                 violationCount = 0,
                 negativePoints = 0,
-                judicialStatus = "ارسال شده به کارشناس و مدیر (کد رهگیری: $msgId) 🟢",
+                judicialStatus = "درخواست واقعاً به بله ارسال شد؛ نتیجه خلافی هنوز دریافت نشده است.",
                 inquiryDateTimeShamsi = nowShamsi,
                 violations = emptyList(),
+                inquiryRecordId = 0L,
+                baleMessageId = response.messageId,
                 isPaid = false
             )
 
             TrafficFineApiResponse.Success(result)
         } catch (e: Exception) {
             Log.e(TAG, "Error sending inquiry to Bale Bot: ${e.message}", e)
-            val fallbackResult = TrafficFineResult(
-                vehicleTitle = vehicleTitle,
-                plateFormatted = plateFormatted,
-                isMotorcycle = isMotorcycle,
-                totalAmount = 0L,
-                violationCount = 0,
-                negativePoints = 0,
-                judicialStatus = "ثبت شده در صف ارسال کارشناس و مدیر 🟢",
-                inquiryDateTimeShamsi = nowShamsi,
-                violations = emptyList(),
-                isPaid = false
+            TrafficFineApiResponse.Error(
+                "خطا در ارسال درخواست به بله: ${e.message ?: "خطای نامشخص"}"
             )
-            TrafficFineApiResponse.Success(fallbackResult)
         }
     }
 }

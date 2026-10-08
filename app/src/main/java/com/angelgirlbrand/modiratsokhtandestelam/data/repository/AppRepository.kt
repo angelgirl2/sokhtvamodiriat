@@ -16,6 +16,35 @@ class AppRepository(
     private val railwaySyncService: RailwaySyncService = RailwaySyncService(),
     private val trafficFineApiService: TrafficFineApiService = TrafficFineApiService()
 ) {
+    // --- Successful Bale request history ---
+    fun getSuccessfulBaleRequestHistory(): Flow<List<BaleRequestHistoryEntity>> =
+        db.baleRequestHistoryDao().getAllSuccessfulRequests()
+
+    suspend fun deleteBaleRequestHistory(record: BaleRequestHistoryEntity) =
+        db.baleRequestHistoryDao().delete(record)
+
+    suspend fun clearBaleRequestHistory() = db.baleRequestHistoryDao().clearAll()
+
+    private suspend fun recordSuccessfulBaleRequest(
+        requestKey: String,
+        requestType: String,
+        title: String,
+        summary: String,
+        baleMessageId: String,
+        chatId: String
+    ) {
+        db.baleRequestHistoryDao().insertSuccessfulRequest(
+            BaleRequestHistoryEntity(
+                requestKey = requestKey,
+                requestType = requestType,
+                title = title,
+                summary = summary,
+                baleMessageId = baleMessageId,
+                chatId = chatId
+            )
+        )
+    }
+
     // --- Vehicles ---
     fun getAllVehicles(): Flow<List<VehicleEntity>> = db.vehicleDao().getAllVehicles()
 
@@ -171,12 +200,28 @@ class AppRepository(
             append("💡 (همچنین می‌توانید به این پیام با کلمات /ok یا /reject یا /wait یا /delete یا تایید/رد/حذف پاسخ (Reply) دهید.)")
         }
 
-        // Send to remote backend service
+        // Persist the request only after Bale has actually accepted the message.
         val baleResult = baleBotService.sendMessage(botToken, chatId, botMessageText)
-        val messageId = baleResult.getOrNull()?.messageId ?: ("REQ-" + id.toString())
+        val sendResponse = baleResult.getOrElse { error ->
+            db.serviceRequestDao().deleteRequest(initialEntity.copy(id = id))
+            throw IllegalStateException("ارسال درخواست به بله ناموفق بود: ${error.message}", error)
+        }
+        if (!sendResponse.isSuccess) {
+            db.serviceRequestDao().deleteRequest(initialEntity.copy(id = id))
+            throw IllegalStateException("ارسال درخواست به بله ناموفق بود.")
+        }
 
+        val messageId = sendResponse.messageId
         val finalEntity = initialEntity.copy(id = id, baleMessageId = messageId)
         db.serviceRequestDao().updateRequest(finalEntity)
+        recordSuccessfulBaleRequest(
+            requestKey = "SERVICE:$id:$messageId",
+            requestType = requestType,
+            title = title,
+            summary = "درخواست خدمات با موفقیت به ربات بله ارسال شد.",
+            baleMessageId = messageId,
+            chatId = chatId
+        )
         return finalEntity
     }
 
@@ -451,37 +496,35 @@ class AppRepository(
         botToken: String,
         chatId: String
     ): InquiryRecordEntity {
-        val status = if (workflowMethod == "ADMIN_REVIEW" || workflowMethod == "ADMIN_BALE") "در حال بررسی توسط کارشناس" else "در انتظار پرداخت آنلاین"
-        var ref = ""
-
         val effectiveVin = vinCode.ifBlank { barcodeOrVin }
         val effectiveBarcode = barcode.ifBlank { barcodeOrVin }
 
-        if (workflowMethod == "ADMIN_REVIEW" || workflowMethod == "ADMIN_BALE") {
-            val msg = buildString {
-                append("💳 *استعلام و تسویه عوارض و خلافی خودرو*\n\n")
-                append("📑 *نوع استعلام:* ").append(inquiryType).append("\n")
-                if (fullName.isNotBlank()) append("👤 *نام مالک:* ").append(fullName).append("\n")
-                if (nationalId.isNotBlank()) append("🆔 *کد ملی:* ").append(nationalId).append("\n")
-                if (phoneNumber.isNotBlank()) append("📱 *شماره تماس:* ").append(phoneNumber).append("\n\n")
-                append("🚗 *مشخصات کامل خودرو:*\n")
-                append("  • پلاک: ").append(plateNumber).append("\n")
-                if (effectiveVin.isNotBlank()) append("  • کد شناسایی (VIN): ").append(effectiveVin).append("\n")
-                if (effectiveBarcode.isNotBlank()) append("  • بارکد کارت خودرو: ").append(effectiveBarcode).append("\n")
-                if (engineNumber.isNotBlank()) append("  • شماره موتور: ").append(engineNumber).append("\n")
-                if (chassisNumber.isNotBlank()) append("  • شماره شاسی: ").append(chassisNumber).append("\n\n")
-                if (postalCode.isNotBlank() || address.isNotBlank()) {
-                    append("📮 *مشخصات سکونت:*\n")
-                    if (postalCode.isNotBlank()) append("  • کد پستی: ").append(postalCode).append("\n")
-                    if (address.isNotBlank()) append("  • آدرس: ").append(address).append("\n\n")
-                }
-                append("💰 *مبلغ برآوردی:* ").append("%,d".format(amount)).append(" تومان\n")
-                append("\nلطفا پس از بررسی و تسویه، وضعیت را تایید بفرمایید.")
-            }
-            val res = baleBotService.sendMessage(botToken, chatId, msg)
-            ref = res.getOrNull()?.messageId ?: ("INQ-" + System.currentTimeMillis().toString().takeLast(6))
+        val msg = buildString {
+            append("📋 درخواست جدید استعلام خودرو\n\n")
+            append("🔎 نوع استعلام: ").append(inquiryType).append("\n")
+            append("🚗 عنوان: ").append(title).append("\n")
+            if (plateNumber.isNotBlank()) append("🔢 پلاک: ").append(plateNumber).append("\n")
+            if (effectiveVin.isNotBlank()) append("🆔 VIN: ").append(effectiveVin).append("\n")
+            if (effectiveBarcode.isNotBlank()) append("📄 بارکد: ").append(effectiveBarcode).append("\n")
+            if (engineNumber.isNotBlank()) append("⚙️ شماره موتور: ").append(engineNumber).append("\n")
+            if (chassisNumber.isNotBlank()) append("🧾 شماره شاسی: ").append(chassisNumber).append("\n")
+            if (fullName.isNotBlank()) append("👤 نام: ").append(fullName).append("\n")
+            if (nationalId.isNotBlank()) append("🪪 کد ملی: ").append(nationalId).append("\n")
+            if (phoneNumber.isNotBlank()) append("📱 تماس: ").append(phoneNumber).append("\n")
+            if (postalCode.isNotBlank()) append("📮 کد پستی: ").append(postalCode).append("\n")
+            if (address.isNotBlank()) append("🏠 آدرس: ").append(address).append("\n")
+            if (amount > 0L) append("💰 مبلغ برآوردی ثبت‌شده: ").append("%,d".format(amount)).append(" تومان\n")
+            append("\n✅ این پیام فقط پس از پذیرش موفق توسط ربات بله در سابقه برنامه ثبت می‌شود.")
         }
 
+        val sendResponse = baleBotService.sendMessage(botToken, chatId, msg).getOrElse { error ->
+            throw IllegalStateException("ارسال استعلام به بله ناموفق بود: ${error.message}", error)
+        }
+        if (!sendResponse.isSuccess) {
+            throw IllegalStateException("ارسال استعلام به بله ناموفق بود.")
+        }
+
+        val now = System.currentTimeMillis()
         val record = InquiryRecordEntity(
             inquiryType = inquiryType,
             title = title,
@@ -498,11 +541,19 @@ class AppRepository(
             address = address,
             amount = amount,
             workflowMethod = workflowMethod,
-            status = status,
-            transactionRef = ref,
-            dateMillis = System.currentTimeMillis()
+            status = "ارسال موفق به ربات بله",
+            transactionRef = sendResponse.messageId,
+            dateMillis = now
         )
         val id = db.inquiryDao().insertInquiry(record)
+        recordSuccessfulBaleRequest(
+            requestKey = "INQUIRY:$id:${sendResponse.messageId}",
+            requestType = inquiryType,
+            title = title,
+            summary = if (plateNumber.isNotBlank()) "پلاک: $plateNumber" else "درخواست بدون پلاک",
+            baleMessageId = sendResponse.messageId,
+            chatId = chatId
+        )
         return record.copy(id = id)
     }
 
@@ -549,10 +600,18 @@ class AppRepository(
                 amount = 0L,
                 workflowMethod = "BALE_BOT",
                 status = "ارسال شده به کارشناس و مدیر (در انتظار پاسخ)",
-                transactionRef = "BALE-" + System.currentTimeMillis().toString().takeLast(8),
+                transactionRef = res.baleMessageId.ifBlank { "BALE-PENDING" },
                 dateMillis = System.currentTimeMillis()
             )
             val id = db.inquiryDao().insertInquiry(record)
+            recordSuccessfulBaleRequest(
+                requestKey = "TRAFFIC:$id:${record.transactionRef}",
+                requestType = record.inquiryType,
+                title = record.title,
+                summary = "پلاک: ${record.plateNumber}",
+                baleMessageId = record.transactionRef,
+                chatId = chatId
+            )
             return TrafficFineApiResponse.Success(res.copy(inquiryRecordId = id))
         }
 

@@ -2,7 +2,6 @@ package com.angelgirlbrand.modiratsokhtandestelam.ui.screens
 
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -40,7 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.angelgirlbrand.modiratsokhtandestelam.data.local.entity.InquiryRecordEntity
+import com.angelgirlbrand.modiratsokhtandestelam.data.local.entity.BaleRequestHistoryEntity
 import com.angelgirlbrand.modiratsokhtandestelam.data.local.entity.VehicleEntity
 import com.angelgirlbrand.modiratsokhtandestelam.ui.components.ArvandPlateView
 import com.angelgirlbrand.modiratsokhtandestelam.ui.components.DynamicStatusWaitingTracker
@@ -53,7 +52,6 @@ import com.angelgirlbrand.modiratsokhtandestelam.ui.components.VehiclePlateView
 import com.angelgirlbrand.modiratsokhtandestelam.ui.viewmodel.BaleServiceViewModel
 import com.angelgirlbrand.modiratsokhtandestelam.ui.viewmodel.FuelViewModel
 import com.angelgirlbrand.modiratsokhtandestelam.util.PersianDateHelper
-import kotlinx.coroutines.launch
 
 // Model for individual traffic violations
 data class FineViolationItem(
@@ -79,6 +77,7 @@ data class TrafficFineResult(
     val inquiryDateTimeShamsi: String,
     val violations: List<FineViolationItem>,
     val inquiryRecordId: Long = 0L,
+    val baleMessageId: String = "",
     val isPaid: Boolean = false
 )
 
@@ -89,21 +88,15 @@ fun InquiryAndPaymentScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
-    val inquiries by baleViewModel.inquiries.collectAsState()
     val isSubmitting by baleViewModel.isSubmitting.collectAsState()
     val vehicles by fuelViewModel.vehicles.collectAsState()
+    val baleHistory by baleViewModel.successfulBaleHistory.collectAsState()
 
     // Real Traffic Fine Inquiry State from ViewModel (Bale Bot Service)
     val activeFineResult by baleViewModel.trafficFineResult.collectAsState()
     val isInquiringFines by baleViewModel.isFineInquiring.collectAsState()
 
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabTitles = listOf("همه استعلام‌ها", "خلافی راهور", "عوارض آزادراهی", "عوارض سالیانه", "مالیات نقل و انتقال")
-
     var showInquiryDialog by remember { mutableStateOf(false) }
-    var selectedInquiryForReceipt by remember { mutableStateOf<InquiryRecordEntity?>(null) }
-
     // Specialized Inquiry Dialogs State
     var showNegativePointsDialog by remember { mutableStateOf(false) }
     var showTechnicalInspectionDialog by remember { mutableStateOf(false) }
@@ -111,20 +104,17 @@ fun InquiryAndPaymentScreen(
     var showHighwayTollsDialog by remember { mutableStateOf(false) }
     var showFuelCardInquiryDialog by remember { mutableStateOf(false) }
 
-    val filteredInquiries = remember(inquiries, selectedTabIndex) {
-        when (selectedTabIndex) {
-            1 -> inquiries.filter { it.inquiryType.contains("خلافی") }
-            2 -> inquiries.filter { it.inquiryType.contains("آزادراهی") }
-            3 -> inquiries.filter { it.inquiryType.contains("سالیانه") || it.inquiryType.contains("شهرداری") }
-            4 -> inquiries.filter { it.inquiryType.contains("مالیات") }
-            else -> inquiries
-        }
-    }
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
+
+    BoxWithConstraints(
+        modifier = modifier.fillMaxSize()
+    ) {
+        val compact = maxWidth < 600.dp
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = if (compact) 10.dp else 16.dp),
         contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -218,7 +208,7 @@ fun InquiryAndPaymentScreen(
                 onSelectVehicleDocuments = { showVehicleDocumentsDialog = true },
                 onSelectHighwayTolls = { showHighwayTollsDialog = true },
                 onSelectFuelCard = { showFuelCardInquiryDialog = true },
-                onSelectTrafficFines = { selectedTabIndex = 1 }
+                onSelectTrafficFines = { com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("فرم استعلام خلافی در همین صفحه در دسترس است.") }
             )
         }
 
@@ -398,14 +388,19 @@ fun InquiryAndPaymentScreen(
         }
 
         // =====================================================================
-        // 3.5. PAYMENT TRANSACTION HISTORY SECTION (تاریخچه تراکنش‌های عوارض و خلافی)
+        // 3.5. VERIFIED BALE HISTORY ONLY
         // =====================================================================
         item {
-            PaymentTransactionHistorySection()
+            SuccessfulBaleHistorySection(
+                history = baleHistory,
+                onDelete = { baleViewModel.deleteBaleHistory(it) },
+                onClear = { baleViewModel.clearBaleHistory() },
+                compact = compact
+            )
         }
 
         // =====================================================================
-        // 4. TAB SELECTOR FOR PAST INQUIRIES
+        // 4. CUSTOM INQUIRY ACTION (no fake local result list)
         // =====================================================================
         item {
             Row(
@@ -413,112 +408,31 @@ fun InquiryAndPaymentScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "سوابق استعلام‌ها و درخواست‌ها",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "ارسال درخواست جدید",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "فقط درخواست‌هایی که واقعاً توسط بله پذیرفته شوند در سابقه بالا ذخیره می‌شوند.",
+                        fontSize = 10.5.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 TextButton(
                     onClick = { showInquiryDialog = true },
+                    enabled = !isSubmitting,
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("استعلام جدید سفارشی", fontSize = 11.5.sp)
+                    Text("استعلام جدید", fontSize = 11.5.sp)
                 }
-            }
-
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
-            ) {
-                items(tabTitles.indices.toList()) { index ->
-                    FilterChip(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        label = { Text(tabTitles[index], fontSize = 11.sp, fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal) },
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                }
-            }
-        }
-
-        // =====================================================================
-        // 5. INQUIRIES HISTORY LIST
-        // =====================================================================
-        if (filteredInquiries.isEmpty()) {
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.ReceiptLong,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Text(
-                            text = "هنوز سابقه استعلامی در این بخش ثبت نشده است.",
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "با استفاده از کادر بالای صفحه، شماره پلاک خودرو یا موتور خود را به کارشناس و مدیر ارسال نمایید.",
-                            fontSize = 11.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-        } else {
-            items(filteredInquiries) { inquiry ->
-                InquiryRecordItem(
-                    inquiry = inquiry,
-                    onApproveByAdmin = {
-                        baleViewModel.approveInquiry(inquiry.id)
-                        com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("تایید تسویه توسط مدیر اعمال گردید.")
-                    },
-                    onDirectPay = {
-                        baleViewModel.processDirectPayment(inquiry)
-                        TransactionHistoryManager.addTransaction(
-                            context,
-                            PaymentTransactionRecord(
-                                title = "پرداخت ${inquiry.title} (${inquiry.plateNumber})",
-                                amount = "${String.format("%,d", inquiry.amount)} تومان",
-                                status = "موفق ✅",
-                                date = "امروز • درگاه پرداخت امن شاپرک"
-                            )
-                        )
-                    },
-                    onDelete = {
-                        baleViewModel.deleteInquiry(inquiry)
-                        com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("استعلام از سوابق حذف گردید")
-                    },
-                    onViewReceipt = {
-                        selectedInquiryForReceipt = inquiry
-                    }
-                )
             }
         }
     }
 
-    // Modal Dialog: Detailed Payment Receipt
-    if (selectedInquiryForReceipt != null) {
-        ReceiptDetailsDialog(
-            inquiry = selectedInquiryForReceipt!!,
-            onDismiss = { selectedInquiryForReceipt = null }
-        )
     }
 
     // Modal Dialog: Custom Inquiry Form
@@ -536,7 +450,7 @@ fun InquiryAndPaymentScreen(
                     barcodeOrVin = barcode.ifBlank { vin },
                     nationalId = nationalId,
                     amount = amount,
-                    workflowMethod = if (ref.isNotBlank()) "DIRECT_PAYMENT" else "EXPERT_REVIEW",
+                    workflowMethod = "BALE_REQUEST",
                     fullName = name,
                     phoneNumber = phone,
                     vinCode = vin,
@@ -547,7 +461,6 @@ fun InquiryAndPaymentScreen(
                     address = addr
                 )
                 showInquiryDialog = false
-                com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("استعلام جدید با موفقیت برای ادمین ارسال شد")
             }
         )
     }
@@ -565,12 +478,11 @@ fun InquiryAndPaymentScreen(
                     plateNumber = lic,
                     barcodeOrVin = lic,
                     nationalId = nat,
-                    amount = 12000L,
+                    amount = 0L,
                     workflowMethod = "EXPERT_REVIEW",
                     fullName = "مالک گواهی‌نامه",
                     phoneNumber = ph
                 )
-                com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("درخواست استعلام نمره منفی ثبت گردید")
             }
         )
     }
@@ -578,6 +490,7 @@ fun InquiryAndPaymentScreen(
     if (showTechnicalInspectionDialog) {
         TechnicalInspectionInquiryDialog(
             vehicles = vehicles,
+            isSubmitting = isSubmitting,
             onDismiss = { showTechnicalInspectionDialog = false },
             onSubmit = { plate, vin ->
                 baleViewModel.submitInquiry(
@@ -586,11 +499,10 @@ fun InquiryAndPaymentScreen(
                     plateNumber = plate,
                     barcodeOrVin = vin,
                     nationalId = "",
-                    amount = 15000L,
+                    amount = 0L,
                     workflowMethod = "EXPERT_REVIEW",
                     vinCode = vin
                 )
-                com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("درخواست استعلام معاینه فنی ثبت گردید")
             }
         )
     }
@@ -598,6 +510,7 @@ fun InquiryAndPaymentScreen(
     if (showVehicleDocumentsDialog) {
         VehicleDocumentsInquiryDialog(
             vehicles = vehicles,
+            isSubmitting = isSubmitting,
             onDismiss = { showVehicleDocumentsDialog = false },
             onSubmit = { vin, barcode, nat ->
                 baleViewModel.submitInquiry(
@@ -606,12 +519,11 @@ fun InquiryAndPaymentScreen(
                     plateNumber = "",
                     barcodeOrVin = barcode.ifBlank { vin },
                     nationalId = nat,
-                    amount = 20000L,
+                    amount = 0L,
                     workflowMethod = "EXPERT_REVIEW",
                     vinCode = vin,
                     barcode = barcode
                 )
-                com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("درخواست استعلام اسناد خودرو ثبت گردید")
             }
         )
     }
@@ -619,6 +531,7 @@ fun InquiryAndPaymentScreen(
     if (showHighwayTollsDialog) {
         HighwayTollsInquiryDialog(
             vehicles = vehicles,
+            isSubmitting = isSubmitting,
             onDismiss = { showHighwayTollsDialog = false },
             onSubmit = { plate ->
                 baleViewModel.submitInquiry(
@@ -627,10 +540,9 @@ fun InquiryAndPaymentScreen(
                     plateNumber = plate,
                     barcodeOrVin = "",
                     nationalId = "",
-                    amount = 35000L,
+                    amount = 0L,
                     workflowMethod = "DIRECT_PAYMENT"
                 )
-                com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("درخواست استعلام عوارض ثبت گردید")
             }
         )
     }
@@ -638,6 +550,7 @@ fun InquiryAndPaymentScreen(
     if (showFuelCardInquiryDialog) {
         FuelCardInquiryModalDialog(
             vehicles = vehicles,
+            isSubmitting = isSubmitting,
             onDismiss = { showFuelCardInquiryDialog = false },
             onSubmit = { vin, barcode, nat ->
                 baleViewModel.submitInquiry(
@@ -646,12 +559,11 @@ fun InquiryAndPaymentScreen(
                     plateNumber = "",
                     barcodeOrVin = barcode.ifBlank { vin },
                     nationalId = nat,
-                    amount = 10000L,
+                    amount = 0L,
                     workflowMethod = "EXPERT_REVIEW",
                     vinCode = vin,
                     barcode = barcode
                 )
-                com.angelgirlbrand.modiratsokhtandestelam.util.AppToast.show("درخواست استعلام کارت سوخت ثبت گردید")
             }
         )
     }
@@ -957,10 +869,13 @@ fun TrafficFinePlateInquiryCard(
 
     var vehicleTitle by remember { mutableStateOf(vehicles.firstOrNull()?.title ?: "پژو ۲۰۶") }
 
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .testTag("traffic_fine_inquiry_input_card"),
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val compact = maxWidth < 420.dp
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("traffic_fine_inquiry_input_card"),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
         elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
@@ -972,35 +887,52 @@ fun TrafficFinePlateInquiryCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "استعلام خلافی فقط با پلاک",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = Color.White
-                )
-
-                // Vehicle Type Segmented Chips: خودرو ملی، پلاک اروندی، موتورسیکلت
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    FilterChip(
-                        selected = plateMode == "خودرو",
-                        onClick = { plateMode = "خودرو" },
-                        label = { Text("خودرو", fontSize = 10.5.sp) }
+            if (compact) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "استعلام خلافی فقط با پلاک",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.White
                     )
-                    FilterChip(
-                        selected = plateMode == "اروندی",
-                        onClick = { plateMode = "اروندی" },
-                        label = { Text("اروندی 🌴", fontSize = 10.5.sp) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                        FilterChip(
+                            selected = plateMode == "خودرو",
+                            onClick = { plateMode = "خودرو" },
+                            label = { Text("خودرو", fontSize = 10.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = plateMode == "اروندی",
+                            onClick = { plateMode = "اروندی" },
+                            label = { Text("اروندی 🌴", fontSize = 10.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        FilterChip(
+                            selected = plateMode == "موتور",
+                            onClick = { plateMode = "موتور" },
+                            label = { Text("موتور", fontSize = 10.sp) },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            } else {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "استعلام خلافی فقط با پلاک",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.White
                     )
-                    FilterChip(
-                        selected = plateMode == "موتور",
-                        onClick = { plateMode = "موتور" },
-                        label = { Text("موتور", fontSize = 10.5.sp) }
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        FilterChip(selected = plateMode == "خودرو", onClick = { plateMode = "خودرو" }, label = { Text("خودرو", fontSize = 10.5.sp) })
+                        FilterChip(selected = plateMode == "اروندی", onClick = { plateMode = "اروندی" }, label = { Text("اروندی 🌴", fontSize = 10.5.sp) })
+                        FilterChip(selected = plateMode == "موتور", onClick = { plateMode = "موتور" }, label = { Text("موتور", fontSize = 10.5.sp) })
+                    }
                 }
             }
 
@@ -1121,42 +1053,51 @@ fun TrafficFinePlateInquiryCard(
                     }
                 }
                 else -> {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = plateCity,
-                            onValueChange = { if (it.length <= 2) plateCity = it },
-                            label = { Text("ایران") },
-                            modifier = Modifier.weight(0.9f),
-                            singleLine = true,
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                        OutlinedTextField(
-                            value = plateL3,
-                            onValueChange = { if (it.length <= 3) plateL3 = it },
-                            label = { Text("۳ رقم") },
-                            modifier = Modifier.weight(1.1f),
-                            singleLine = true,
-                            shape = RoundedCornerShape(10.dp)
-                        )
-                        // Persian Letter Picker with Live Color Swatch Indicator
-                        Box(modifier = Modifier.weight(1.1f)) {
-                            IranianPlateLetterPicker(
-                                selectedLetter = plateLetter,
-                                onLetterSelected = { plateLetter = it }
-                            )
+                    if (compact) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                OutlinedTextField(
+                                    value = plateCity,
+                                    onValueChange = { if (it.length <= 2) plateCity = it },
+                                    label = { Text("ایران") },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                OutlinedTextField(
+                                    value = plateL3,
+                                    onValueChange = { if (it.length <= 3) plateL3 = it },
+                                    label = { Text("۳ رقم") },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                            }
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.weight(1.1f)) {
+                                    IranianPlateLetterPicker(selectedLetter = plateLetter, onLetterSelected = { plateLetter = it })
+                                }
+                                OutlinedTextField(
+                                    value = plateF2,
+                                    onValueChange = { if (it.length <= 2) plateF2 = it },
+                                    label = { Text("۲ رقم") },
+                                    modifier = Modifier.weight(1f),
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                            }
                         }
-                        OutlinedTextField(
-                            value = plateF2,
-                            onValueChange = { if (it.length <= 2) plateF2 = it },
-                            label = { Text("۲ رقم") },
-                            modifier = Modifier.weight(0.9f),
-                            singleLine = true,
-                            shape = RoundedCornerShape(10.dp)
-                        )
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(value = plateCity, onValueChange = { if (it.length <= 2) plateCity = it }, label = { Text("ایران") }, modifier = Modifier.weight(0.9f), singleLine = true, shape = RoundedCornerShape(10.dp))
+                            OutlinedTextField(value = plateL3, onValueChange = { if (it.length <= 3) plateL3 = it }, label = { Text("۳ رقم") }, modifier = Modifier.weight(1.1f), singleLine = true, shape = RoundedCornerShape(10.dp))
+                            Box(modifier = Modifier.weight(1.1f)) { IranianPlateLetterPicker(selectedLetter = plateLetter, onLetterSelected = { plateLetter = it }) }
+                            OutlinedTextField(value = plateF2, onValueChange = { if (it.length <= 2) plateF2 = it }, label = { Text("۲ رقم") }, modifier = Modifier.weight(0.9f), singleLine = true, shape = RoundedCornerShape(10.dp))
+                        }
                     }
                 }
             }
@@ -1223,160 +1164,6 @@ fun TrafficFinePlateInquiryCard(
                 }
             }
         }
-    }
-}
-
-// Single inquiry record card in history list
-@Composable
-fun InquiryRecordItem(
-    inquiry: InquiryRecordEntity,
-    onApproveByAdmin: () -> Unit,
-    onDirectPay: () -> Unit,
-    onDelete: () -> Unit,
-    onViewReceipt: () -> Unit
-) {
-    val isPaid = inquiry.status.contains("پرداخت شد") || inquiry.status.contains("تسویه")
-    val isBaleSent = inquiry.status.contains("ارسال به مدیریت") || inquiry.status.contains("ربات بله") || inquiry.workflowMethod == "BALE_BOT"
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onViewReceipt() },
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = CardDefaults.outlinedCardBorder()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = if (isPaid || isBaleSent) Color(0xFF10B981).copy(alpha = 0.15f) else Color(0xFFF43F5E).copy(alpha = 0.15f),
-                        modifier = Modifier.size(34.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                if (isPaid || isBaleSent) Icons.Default.CheckCircle else Icons.Default.ReceiptLong,
-                                contentDescription = null,
-                                tint = if (isPaid || isBaleSent) Color(0xFF10B981) else Color(0xFFF43F5E),
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-                    Column {
-                        Text(text = inquiry.inquiryType, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        Text(text = inquiry.title, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (isPaid) Color(0xFF10B981).copy(alpha = 0.15f) else if (isBaleSent) Color(0xFF0284C7).copy(alpha = 0.15f) else Color(0xFFF59E0B).copy(alpha = 0.15f)
-                ) {
-                    Text(
-                        text = if (isPaid) "تسویه شد" else if (isBaleSent) "ارسال به مدیریت" else "در انتظار پرداخت",
-                        fontSize = 10.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isPaid) Color(0xFF047857) else if (isBaleSent) Color(0xFF0369A1) else Color(0xFFD97706),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(text = "پلاک: ${inquiry.plateNumber}", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (inquiry.amount > 0) {
-                    Text(
-                        text = "%,d تومان".format(inquiry.amount),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = if (isPaid) Color(0xFF047857) else Color(0xFFBE123C)
-                    )
-                } else {
-                    Text(
-                        text = "استعلام پلاک‌پایه",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.5.sp,
-                        color = Color(0xFF0284C7)
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = PersianDateHelper.toPersianDateTime(inquiry.dateMillis),
-                    fontSize = 9.5.sp,
-                    color = MaterialTheme.colorScheme.outline
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (!isPaid && inquiry.amount > 0) {
-                        Button(
-                            onClick = onDirectPay,
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF047857)),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                            modifier = Modifier.height(30.dp)
-                        ) {
-                            Text("پرداخت آنی", fontSize = 10.5.sp)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-// Receipt details modal dialog
-@Composable
-fun ReceiptDetailsDialog(
-    inquiry: InquiryRecordEntity,
-    onDismiss: () -> Unit
-) {
-    M3ThemedDialogContainer(
-        onDismissRequest = onDismiss,
-        title = "رسید استعلام و پرداخت",
-        subtitle = "کد رهگیری: ${inquiry.transactionRef.ifBlank { "INQ-${inquiry.id}" }}",
-        icon = Icons.Default.ReceiptLong,
-        iconTint = MaterialTheme.colorScheme.primary
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("نوع استعلام: ${inquiry.inquiryType}", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
-            Text("وسیله نقلیه: ${inquiry.title}", fontSize = 12.sp)
-            Text("شماره پلاک: ${inquiry.plateNumber}", fontSize = 12.sp)
-            if (inquiry.amount > 0) {
-                Text("مبلغ: %,d تومان".format(inquiry.amount), fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-            }
-            Text("وضعیت: ${inquiry.status}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
-            Text("تاریخ و زمان: ${PersianDateHelper.toPersianDateTime(inquiry.dateMillis)}", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Button(
-            onClick = onDismiss,
-            modifier = Modifier.fillMaxWidth().height(46.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text("بستن رسید", fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -1402,7 +1189,6 @@ private fun ChicInquiryFormDialog(
     )
     var selectedType by remember { mutableStateOf(initialType) }
     var vehiclePlate by remember { mutableStateOf(vehicles.firstOrNull()?.formattedPlate.orEmpty()) }
-    var amount by remember { mutableStateOf("150000") }
     var fullName by remember { mutableStateOf("") }
     var phoneNumber by remember { mutableStateOf("") }
 
@@ -1421,16 +1207,9 @@ private fun ChicInquiryFormDialog(
             singleLine = true,
             shape = RoundedCornerShape(12.dp)
         )
-        OutlinedTextField(
-            value = amount,
-            onValueChange = { amount = it },
-            label = { Text("مبلغ برآوردی (تومان)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp)
-        )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
+                enabled = !isSubmitting,
                 onClick = {
                     onSubmit(
                         selectedType,
@@ -1438,7 +1217,7 @@ private fun ChicInquiryFormDialog(
                         vehiclePlate,
                         "",
                         "",
-                        amount.toLongOrNull() ?: 150000L,
+                        0L,
                         fullName,
                         phoneNumber,
                         "", "", "", "", "", "پیامک", ""
@@ -1461,84 +1240,16 @@ private fun ChicInquiryFormDialog(
 }
 
 // =============================================================================
-// 3.5. PAYMENT TRANSACTION HISTORY SECTION (تاریخچه تراکنش‌های عوارض و خلافی - شروع از صفر)
+// COMPONENT: SPECIALIZED INQUIRY SERVICES GRAPHIC CARDS GRID (کارت‌های گرافیکی مدرن)
 // =============================================================================
 
-data class PaymentTransactionRecord(
-    val title: String,
-    val amount: String,
-    val status: String,
-    val date: String
-)
-
-object TransactionHistoryManager {
-    private const val PREFS_NAME = "payment_transactions_history_v2"
-    private const val KEY_TRANSACTIONS = "transactions_json"
-
-    fun getTransactions(context: Context): List<PaymentTransactionRecord> {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val jsonStr = prefs.getString(KEY_TRANSACTIONS, null) ?: return emptyList()
-        return try {
-            val jsonArray = org.json.JSONArray(jsonStr)
-            val list = mutableListOf<PaymentTransactionRecord>()
-            for (i in 0 until jsonArray.length()) {
-                val obj = jsonArray.getJSONObject(i)
-                list.add(
-                    PaymentTransactionRecord(
-                        title = obj.getString("title"),
-                        amount = obj.getString("amount"),
-                        status = obj.getString("status"),
-                        date = obj.optString("date", "امروز • درگاه پرداخت امن شاپرک")
-                    )
-                )
-            }
-            list
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    fun addTransaction(context: Context, record: PaymentTransactionRecord) {
-        val current = getTransactions(context).toMutableList()
-        current.add(0, record)
-        saveTransactions(context, current)
-    }
-
-    fun clearAll(context: Context) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().remove(KEY_TRANSACTIONS).apply()
-    }
-
-    private fun saveTransactions(context: Context, list: List<PaymentTransactionRecord>) {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val jsonArray = org.json.JSONArray()
-        list.forEach { item ->
-            val obj = org.json.JSONObject().apply {
-                put("title", item.title)
-                put("amount", item.amount)
-                put("status", item.status)
-                put("date", item.date)
-            }
-            jsonArray.put(obj)
-        }
-        prefs.edit().putString(KEY_TRANSACTIONS, jsonArray.toString()).apply()
-    }
-}
-
-private fun toPersianDigits(input: String): String {
-    val persianDigits = charArrayOf('۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹')
-    return input.map { ch ->
-        if (ch in '0'..'9') persianDigits[ch - '0'] else ch
-    }.joinToString("")
-}
-
 @Composable
-private fun PaymentTransactionHistorySection() {
-    val context = LocalContext.current
-    var transactions by remember {
-        mutableStateOf(TransactionHistoryManager.getTransactions(context))
-    }
-
+private fun SuccessfulBaleHistorySection(
+    history: List<BaleRequestHistoryEntity>,
+    onDelete: (BaleRequestHistoryEntity) -> Unit,
+    onClear: () -> Unit,
+    compact: Boolean
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -1546,7 +1257,7 @@ private fun PaymentTransactionHistorySection() {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(if (compact) 12.dp else 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
@@ -1554,45 +1265,57 @@ private fun PaymentTransactionHistorySection() {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Default.Payment, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                    Text("تاریخچه تراکنش‌های پرداخت عوارض و خلافی", fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        Icons.Default.Verified,
+                        contentDescription = null,
+                        tint = Color(0xFF10B981),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column {
+                        Text("سوابق ارسال موفق به ربات بله", fontWeight = FontWeight.Bold, fontSize = 13.5.sp)
+                        Text(
+                            "فقط پیام‌هایی که بله واقعاً پذیرفته است.",
+                            fontSize = 10.5.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-                Text(
-                    text = if (transactions.isEmpty()) "۰ تراکنش" else "${toPersianDigits(transactions.size.toString())} تراکنش اخیر",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (history.isNotEmpty()) {
+                    TextButton(
+                        onClick = onClear,
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text("پاکسازی", fontSize = 10.5.sp, color = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
 
-            if (transactions.isEmpty()) {
+            if (history.isEmpty()) {
                 Surface(
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)),
-                    modifier = Modifier.fillMaxWidth()
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 18.dp, horizontal = 14.dp),
+                        modifier = Modifier.padding(18.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.ReceiptLong,
+                            Icons.Default.History,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.75f),
                             modifier = Modifier.size(28.dp)
                         )
+                        Text("هنوز درخواست موفقی برای بله ثبت نشده است.", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         Text(
-                            text = "هیچ تراکنشی ثبت نشده است (۰ تراکنش)",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "پس از استعلام و پرداخت موفق خلافی یا عوارض، رسید و سوابق تراکنش‌ها در اینجا نمایش داده خواهند شد.",
+                            "در صورت خطای شبکه یا رد درخواست توسط بله، چیزی به عنوان استعلام موفق ذخیره نمی‌شود.",
                             fontSize = 10.5.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -1600,59 +1323,38 @@ private fun PaymentTransactionHistorySection() {
                     }
                 }
             } else {
-                transactions.forEach { item ->
+                history.take(20).forEach { record ->
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF10B981),
+                                modifier = Modifier.size(20.dp)
+                            )
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(item.title, fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
-                                Text(item.date, fontSize = 9.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(record.requestType, fontWeight = FontWeight.Bold, fontSize = 11.5.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(record.summary, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(PersianDateHelper.toPersianDateTime(record.dateMillis), fontSize = 9.sp, color = MaterialTheme.colorScheme.outline)
                             }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(item.amount, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                Text(
-                                    item.status,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (item.status.contains("موفق")) Color(0xFF16A34A) else Color(0xFFD97706)
-                                )
+                            IconButton(onClick = { onDelete(record) }, modifier = Modifier.size(30.dp)) {
+                                Icon(Icons.Default.DeleteOutline, contentDescription = "حذف", tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
                             }
                         }
-                    }
-                }
-
-                // Clear history option
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(
-                        onClick = {
-                            TransactionHistoryManager.clearAll(context)
-                            transactions = emptyList()
-                        },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Icon(Icons.Default.DeleteOutline, contentDescription = null, modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.error)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("پاکسازی سوابق", fontSize = 10.5.sp, color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
         }
     }
 }
-
-// =============================================================================
-// COMPONENT: SPECIALIZED INQUIRY SERVICES GRAPHIC CARDS GRID (کارت‌های گرافیکی مدرن)
-// =============================================================================
 
 @Composable
 fun InquiryServicesGraphicCardsGrid(
@@ -1664,271 +1366,49 @@ fun InquiryServicesGraphicCardsGrid(
     onSelectTrafficFines: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val compact = maxWidth < 430.dp
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    Icons.Default.Dashboard,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
-                )
-                Text(
-                    text = "لیست استعلام‌های تخصصی راهور و اسناد",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            }
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-            ) {
-                Text(
-                    text = "آنلاین ⚡",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                )
-            }
-        }
-
-        // 1. Row: Rahvar Negative Points & Technical Inspection
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // Card 1: Rahvar Negative Points (نمره منفی راهور)
-            InquiryGraphicCardItem(
-                title = "نمره منفی راهور",
-                subtitle = "استعلام گواهی‌نامه و سوابق نمره منفی",
-                badge = "راهور FARAJA 👮‍♂️",
-                icon = Icons.Default.Badge,
-                gradientColors = listOf(Color(0xFF2E1065), Color(0xFF5B21B6), Color(0xFF7C3AED)),
-                borderColor = Color(0xFFA78BFA),
-                badgeBg = Color(0xFF4C1D95),
-                badgeText = Color(0xFFDDD6FE),
-                onClick = onSelectNegativePoints,
-                modifier = Modifier.weight(1f)
-            )
-
-            // Card 2: Technical Inspection (معاینه فنی)
-            InquiryGraphicCardItem(
-                title = "معاینه فنی خودرو",
-                subtitle = "اعتبار گواهی سلامت و استعلام تاریخ",
-                badge = "شهرداری‌ها 🔍",
-                icon = Icons.Default.Verified,
-                gradientColors = listOf(Color(0xFF064E3B), Color(0xFF047857), Color(0xFF059669)),
-                borderColor = Color(0xFF34D399),
-                badgeBg = Color(0xFF022C22),
-                badgeText = Color(0xFFA7F3D0),
-                onClick = onSelectTechnicalInspection,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        // 2. Row: Vehicle Documents & Traffic Fines
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // Card 3: Vehicle Documents & Title Deed (اسناد خودرو)
-            InquiryGraphicCardItem(
-                title = "اسناد خودرو و پلاک",
-                subtitle = "کارت خودرو، برگ سبز و سوابق مالکیت",
-                badge = "پلیس ۱۰+ 📄",
-                icon = Icons.Default.FolderSpecial,
-                gradientColors = listOf(Color(0xFF0F172A), Color(0xFF0369A1), Color(0xFF0284C7)),
-                borderColor = Color(0xFF38BDF8),
-                badgeBg = Color(0xFF0C4A6E),
-                badgeText = Color(0xFFBAE6FD),
-                onClick = onSelectVehicleDocuments,
-                modifier = Modifier.weight(1f)
-            )
-
-            // Card 4: Traffic Violations & Fines (خلافی راهور)
-            InquiryGraphicCardItem(
-                title = "خلافی راهور و تسویه",
-                subtitle = "ریز خلافی، اعتراض و تسویه آنی",
-                badge = "تسویه آنی ⚡",
-                icon = Icons.Default.ReceiptLong,
-                gradientColors = listOf(Color(0xFF451A03), Color(0xFF9A3412), Color(0xFFC2410C)),
-                borderColor = Color(0xFFFB923C),
-                badgeBg = Color(0xFF7C2D12),
-                badgeText = Color(0xFFFFEDD5),
-                onClick = onSelectTrafficFines,
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        // 3. Row: Highway Tolls & Fuel Card Inquiry
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // Card 5: Highway Tolls & Municipal Taxes (عوارض آزادراهی)
-            InquiryGraphicCardItem(
-                title = "عوارض آزادراهی",
-                subtitle = "بدهی آزادراه‌ها، بدهی طرح و سالیانه",
-                badge = "راه‌داری 🛣️",
-                icon = Icons.Default.Toll,
-                gradientColors = listOf(Color(0xFF1E1B4B), Color(0xFF3730A3), Color(0xFF4338CA)),
-                borderColor = Color(0xFF818CF8),
-                badgeBg = Color(0xFF312E81),
-                badgeText = Color(0xFFE0E7FF),
-                onClick = onSelectHighwayTolls,
-                modifier = Modifier.weight(1f)
-            )
-
-            // Card 6: Fuel Card Tracking (پیگیری کارت سوخت)
-            InquiryGraphicCardItem(
-                title = "کارت سوخت هوشمند",
-                subtitle = "رهگیری پستی و تخصیص سهمیه سوخت",
-                badge = "پالایش و پخش ⛽",
-                icon = Icons.Default.LocalGasStation,
-                gradientColors = listOf(Color(0xFF881337), Color(0xFFBE123C), Color(0xFFE11D48)),
-                borderColor = Color(0xFFFB7185),
-                badgeBg = Color(0xFF4C0519),
-                badgeText = Color(0xFFFFE4E6),
-                onClick = onSelectFuelCard,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun InquiryGraphicCardItem(
-    title: String,
-    subtitle: String,
-    badge: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    gradientColors: List<Color>,
-    borderColor: Color,
-    badgeBg: Color,
-    badgeText: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        border = BorderStroke(1.2.dp, borderColor.copy(alpha = 0.5f))
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Brush.verticalGradient(gradientColors))
-                .padding(14.dp)
-        ) {
-            Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Badge & Top Icon
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = badgeBg.copy(alpha = 0.85f),
-                        border = BorderStroke(0.8.dp, borderColor.copy(alpha = 0.6f))
-                    ) {
-                        Text(
-                            text = badge,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = badgeText,
-                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
-                        )
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.15f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Dashboard, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                    Text("خدمات استعلام و ارسال درخواست", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                Surface(shape = RoundedCornerShape(8.dp), color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)) {
+                    Text("بله ⚡", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+                }
+            }
 
-                Spacer(modifier = Modifier.height(2.dp))
+            val cards: List<@Composable () -> Unit> = listOf(
+                { InquiryGraphicCardItem("نمره منفی راهور", "ارسال درخواست استعلام سوابق", "راهور FARAJA 👮‍♂️", Icons.Default.Badge, listOf(Color(0xFF2E1065), Color(0xFF5B21B6), Color(0xFF7C3AED)), Color(0xFFA78BFA), Color(0xFF4C1D95), Color(0xFFDDD6FE), onSelectNegativePoints) },
+                { InquiryGraphicCardItem("معاینه فنی خودرو", "ارسال درخواست اعتبار گواهی", "شهرداری‌ها 🔍", Icons.Default.Verified, listOf(Color(0xFF064E3B), Color(0xFF047857), Color(0xFF059669)), Color(0xFF34D399), Color(0xFF022C22), Color(0xFFA7F3D0), onSelectTechnicalInspection) },
+                { InquiryGraphicCardItem("اسناد خودرو و پلاک", "ارسال درخواست وضعیت اسناد", "پلیس ۱۰+ 📄", Icons.Default.FolderSpecial, listOf(Color(0xFF0F172A), Color(0xFF0369A1), Color(0xFF0284C7)), Color(0xFF38BDF8), Color(0xFF0C4A6E), Color(0xFFBAE6FD), onSelectVehicleDocuments) },
+                { InquiryGraphicCardItem("خلافی راهور", "ارسال درخواست استعلام پلاک", "کارشناس ⚡", Icons.Default.ReceiptLong, listOf(Color(0xFF451A03), Color(0xFF9A3412), Color(0xFFC2410C)), Color(0xFFFB923C), Color(0xFF7C2D12), Color(0xFFFFEDD5), onSelectTrafficFines) },
+                { InquiryGraphicCardItem("عوارض آزادراهی", "ارسال درخواست بدهی عوارض", "راه‌داری 🛣️", Icons.Default.Toll, listOf(Color(0xFF1E1B4B), Color(0xFF3730A3), Color(0xFF4338CA)), Color(0xFF818CF8), Color(0xFF312E81), Color(0xFFE0E7FF), onSelectHighwayTolls) },
+                { InquiryGraphicCardItem("کارت سوخت هوشمند", "ارسال درخواست رهگیری کارت", "پالایش و پخش ⛽", Icons.Default.LocalGasStation, listOf(Color(0xFF9F1239), Color(0xFFBE123C), Color(0xFFE11D48)), Color(0xFFFB7185), Color(0xFF881337), Color(0xFFFFE4E6), onSelectFuelCard) }
+            )
 
-                // Title
-                Text(
-                    text = title,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 13.5.sp,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                // Subtitle
-                Text(
-                    text = subtitle,
-                    fontSize = 10.5.sp,
-                    color = Color.White.copy(alpha = 0.85f),
-                    maxLines = 2,
-                    minLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    lineHeight = 15.sp
-                )
-
-                // Action Footer Button
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = Color.White.copy(alpha = 0.15f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 10.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "استعلام فوری",
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(12.dp)
-                        )
+            if (compact) {
+                cards.forEach { it() }
+            } else {
+                cards.chunked(2).forEach { rowCards ->
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        rowCards.forEach {
+                            Box(modifier = Modifier.weight(1f)) { it() }
+                        }
+                        if (rowCards.size == 1) Spacer(modifier = Modifier.weight(1f))
                     }
                 }
             }
         }
     }
 }
+
 
 // =============================================================================
 // SPECIALIZED DIALOG 1: RAHVAR NEGATIVE POINTS INQUIRY (استعلام نمره منفی راهور)
@@ -1945,7 +1425,7 @@ fun NegativePointsInquiryDialog(
     var nationalId by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var selectedVehicleTitle by remember { mutableStateOf(vehicles.firstOrNull()?.title ?: "خودرو شخص") }
-    var resultSubmitted by remember { mutableStateOf(false) }
+    val resultSubmitted = false
 
     M3ThemedDialogContainer(
         onDismissRequest = onDismiss,
@@ -1991,9 +1471,10 @@ fun NegativePointsInquiryDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
+                        enabled = !isSubmitting,
                         onClick = {
                             onSubmit(licenseNo, nationalId, phone, selectedVehicleTitle)
-                            resultSubmitted = true
+                            onDismiss()
                         },
                         modifier = Modifier.weight(1.2f).height(48.dp),
                         shape = RoundedCornerShape(12.dp),
@@ -2082,6 +1563,7 @@ fun NegativePointsInquiryDialog(
 @Composable
 fun TechnicalInspectionInquiryDialog(
     vehicles: List<VehicleEntity>,
+    isSubmitting: Boolean,
     onDismiss: () -> Unit,
     onSubmit: (plate: String, vin: String) -> Unit
 ) {
@@ -2138,9 +1620,10 @@ fun TechnicalInspectionInquiryDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
+                        enabled = !isSubmitting,
                         onClick = {
                             onSubmit(plateInput, vinInput)
-                            showResult = true
+                            onDismiss()
                         },
                         modifier = Modifier.weight(1.2f).height(48.dp),
                         shape = RoundedCornerShape(12.dp),
@@ -2229,6 +1712,7 @@ fun TechnicalInspectionInquiryDialog(
 @Composable
 fun VehicleDocumentsInquiryDialog(
     vehicles: List<VehicleEntity>,
+    isSubmitting: Boolean,
     onDismiss: () -> Unit,
     onSubmit: (vin: String, barcode: String, nationalId: String) -> Unit
 ) {
@@ -2280,9 +1764,10 @@ fun VehicleDocumentsInquiryDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
+                        enabled = !isSubmitting,
                         onClick = {
                             onSubmit(vinInput, barcodeInput, nationalIdInput)
-                            showResult = true
+                            onDismiss()
                         },
                         modifier = Modifier.weight(1.2f).height(48.dp),
                         shape = RoundedCornerShape(12.dp),
@@ -2371,6 +1856,7 @@ fun VehicleDocumentsInquiryDialog(
 @Composable
 fun HighwayTollsInquiryDialog(
     vehicles: List<VehicleEntity>,
+    isSubmitting: Boolean,
     onDismiss: () -> Unit,
     onSubmit: (plate: String) -> Unit
 ) {
@@ -2400,9 +1886,10 @@ fun HighwayTollsInquiryDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
+                        enabled = !isSubmitting,
                         onClick = {
                             onSubmit(plateInput)
-                            showResult = true
+                            onDismiss()
                         },
                         modifier = Modifier.weight(1.2f).height(48.dp),
                         shape = RoundedCornerShape(12.dp),
@@ -2483,6 +1970,7 @@ fun HighwayTollsInquiryDialog(
 @Composable
 fun FuelCardInquiryModalDialog(
     vehicles: List<VehicleEntity>,
+    isSubmitting: Boolean,
     onDismiss: () -> Unit,
     onSubmit: (vin: String, barcode: String, nationalId: String) -> Unit
 ) {
@@ -2533,9 +2021,10 @@ fun FuelCardInquiryModalDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
+                        enabled = !isSubmitting,
                         onClick = {
                             onSubmit(vinInput, barcodeInput, nationalIdInput)
-                            showResult = true
+                            onDismiss()
                         },
                         modifier = Modifier.weight(1.2f).height(48.dp),
                         shape = RoundedCornerShape(12.dp),

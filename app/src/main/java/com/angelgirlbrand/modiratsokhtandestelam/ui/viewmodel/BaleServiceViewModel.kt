@@ -3,6 +3,7 @@ package com.angelgirlbrand.modiratsokhtandestelam.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.angelgirlbrand.modiratsokhtandestelam.data.local.entity.BaleRequestHistoryEntity
 import com.angelgirlbrand.modiratsokhtandestelam.data.local.entity.InquiryRecordEntity
 import com.angelgirlbrand.modiratsokhtandestelam.data.local.entity.ServiceRequestEntity
 import com.angelgirlbrand.modiratsokhtandestelam.data.local.entity.VehicleEntity
@@ -24,6 +25,10 @@ class BaleServiceViewModel(
 
     val inquiries: StateFlow<List<InquiryRecordEntity>> = repository.getAllInquiries()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val successfulBaleHistory: StateFlow<List<BaleRequestHistoryEntity>> =
+        repository.getSuccessfulBaleRequestHistory()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _isSubmitting = MutableStateFlow(false)
     val isSubmitting: StateFlow<Boolean> = _isSubmitting.asStateFlow()
@@ -191,14 +196,14 @@ class BaleServiceViewModel(
         insuranceCompany: String = "",
         durationMonths: Int = 12,
         discountPercent: Int = 0,
-        details: String = ""
+        details: String = "",
+        onComplete: (Boolean) -> Unit = {}
     ) {
         viewModelScope.launch {
             _isSubmitting.value = true
             try {
                 val botToken = securityManager.getBaleBotToken()
                 val chatId = securityManager.getBaleChatId()
-
                 repository.submitServiceRequest(
                     requestType = requestType,
                     title = title,
@@ -220,9 +225,11 @@ class BaleServiceViewModel(
                     botToken = botToken,
                     chatId = chatId
                 )
-                _submissionMessage.value = "درخواست شما با موفقیت ثبت شد و در انتظار تایید کارشناس قرار گرفت."
+                _submissionMessage.value = "درخواست با موفقیت به ربات بله ارسال شد."
+                onComplete(true)
             } catch (e: Exception) {
-                _submissionMessage.value = "خطا در ارسال اطلاعات درخواست. لطفاً اتصال اینترنت خود را چک کرده و مجدداً تلاش نمایید."
+                _submissionMessage.value = "ارسال به ربات بله انجام نشد. لطفاً اتصال اینترنت را بررسی و دوباره تلاش کنید."
+                onComplete(false)
             } finally {
                 _isSubmitting.value = false
             }
@@ -255,7 +262,7 @@ class BaleServiceViewModel(
         }
     }
 
-    // Submit Inquiry & Payment
+    // Submit an inquiry directly to Bale; no fake result is created locally.
     fun submitInquiry(
         inquiryType: String,
         title: String,
@@ -271,15 +278,15 @@ class BaleServiceViewModel(
         engineNumber: String = "",
         chassisNumber: String = "",
         postalCode: String = "",
-        address: String = ""
+        address: String = "",
+        onComplete: (Boolean) -> Unit = {}
     ) {
         viewModelScope.launch {
             _isSubmitting.value = true
             try {
                 val botToken = securityManager.getBaleBotToken()
                 val chatId = securityManager.getBaleChatId()
-
-                val created = repository.submitInquiry(
+                repository.submitInquiry(
                     inquiryType = inquiryType,
                     title = title,
                     plateNumber = plateNumber,
@@ -298,58 +305,31 @@ class BaleServiceViewModel(
                     botToken = botToken,
                     chatId = chatId
                 )
-
-                if (workflowMethod == "DIRECT_PAYMENT") {
-                    _submissionMessage.value = "درگاه پرداخت متصل گردید. در انتظار تکمیل تراکنش بانکی..."
-                } else {
-                    _submissionMessage.value = "اطلاعات استعلام ثبت شد و کد رهگیری اختصاص یافت."
-                }
+                _submissionMessage.value = "درخواست شما با موفقیت به ربات بله ارسال شد و در سابقه ذخیره گردید."
+                onComplete(true)
             } catch (e: Exception) {
-                _submissionMessage.value = "خطا در ثبت استعلام. لطفاً ارتباط شبکه خود را بررسی کنید."
+                _submissionMessage.value = "ارسال درخواست به ربات بله ناموفق بود؛ هیچ استعلام فیکی در سابقه ثبت نشد."
+                onComplete(false)
             } finally {
                 _isSubmitting.value = false
             }
         }
     }
 
-    // Settle / Approve Inquiry by Admin
-    fun approveInquiry(inquiryId: Long) {
-        viewModelScope.launch {
-            val inq = inquiries.value.firstOrNull { it.id == inquiryId }
-            if (inq != null) {
-                val ref = "ADM-" + (10000000..99999999).random()
-                repository.updateInquiry(
-                    inq.copy(
-                        status = "تسویه و انجام شد (تایید مدیر)",
-                        transactionRef = ref
-                    )
-                )
-                _submissionMessage.value = "استعلام و تسویه توسط مدیر تایید و اطلاعات ثبت گردید."
-            }
-        }
-    }
-
-    // Settle Direct Payment
-    fun processDirectPayment(inquiry: InquiryRecordEntity) {
-        viewModelScope.launch {
-            _isSubmitting.value = true
-            delay(1200) // Realistic banking payment roundtrip
-            val randomRef = "SHP-" + (10000000..99999999).random()
-            repository.updateInquiry(
-                inquiry.copy(
-                    status = "پرداخت شد و تسویه گردید",
-                    transactionRef = randomRef
-                )
-            )
-            _isSubmitting.value = false
-            _submissionMessage.value = "پرداخت مبلغ %,d تومان با شماره پیگیری $randomRef با موفقیت تسویه گردید.".format(inquiry.amount)
-        }
-    }
-
+    // Payment settlement is intentionally not simulated. A real payment gateway can be
+    // connected later; the app must never manufacture a successful transaction locally.
     fun deleteInquiry(inquiry: InquiryRecordEntity) {
         viewModelScope.launch {
             repository.deleteInquiry(inquiry)
         }
+    }
+
+    fun deleteBaleHistory(record: BaleRequestHistoryEntity) {
+        viewModelScope.launch { repository.deleteBaleRequestHistory(record) }
+    }
+
+    fun clearBaleHistory() {
+        viewModelScope.launch { repository.clearBaleRequestHistory() }
     }
 
     // Submit Donation Support with custom amount and optional receipt photo

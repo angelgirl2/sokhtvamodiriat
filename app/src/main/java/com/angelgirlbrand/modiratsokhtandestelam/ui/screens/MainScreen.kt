@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.angelgirlbrand.modiratsokhtandestelam.security.AppThemeColor
@@ -251,108 +252,113 @@ fun ModernFloatingNavigationBar(
     onItemSelected: (NavigationItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 14.dp, vertical = 10.dp)
-            .shadow(
-                elevation = 12.dp,
-                shape = RoundedCornerShape(26.dp),
-                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
-                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
-            )
-            .clip(RoundedCornerShape(26.dp))
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                shape = RoundedCornerShape(26.dp)
-            ),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 6.dp
-    ) {
-        Row(
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val compact = maxWidth < 380.dp
+        Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 6.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(horizontal = if (compact) 6.dp else 14.dp, vertical = 8.dp)
+                .shadow(
+                    elevation = 12.dp,
+                    shape = RoundedCornerShape(26.dp),
+                    ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                    spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+                )
+                .clip(RoundedCornerShape(26.dp))
+                .border(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(26.dp)
+                ),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp
         ) {
-            NavigationItem.values().forEach { item ->
-                val isSelected = selectedItem == item
-                val interactionSource = remember { MutableInteractionSource() }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = if (compact) 6.dp else 8.dp),
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                NavigationItem.values().forEach { item ->
+                    val isSelected = selectedItem == item
+                    val interactionSource = remember { MutableInteractionSource() }
 
-                val animatedScale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.08f else 1.0f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
-                    label = "nav_scale"
-                )
+                    val animatedScale by animateFloatAsState(
+                        targetValue = if (isSelected) 1.06f else 1.0f,
+                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+                        label = "nav_scale"
+                    )
 
-                val backgroundColor by animateColorAsState(
-                    targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                    label = "nav_bg"
-                )
+                    val backgroundColor by animateColorAsState(
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+                        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                        label = "nav_bg"
+                    )
 
-                val iconColor by animateColorAsState(
-                    targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                    animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                    label = "nav_icon_color"
-                )
+                    val iconColor by animateColorAsState(
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                        label = "nav_icon_color"
+                    )
 
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .scale(animatedScale)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(backgroundColor)
-                        .clickable(
-                            interactionSource = interactionSource,
-                            indication = null
-                        ) {
-                            onItemSelected(item)
-                        }
-                        .padding(vertical = 6.dp, horizontal = 2.dp)
-                        .testTag("nav_item_${item.name.lowercase()}"),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = item.icon,
-                                contentDescription = item.title,
-                                tint = iconColor,
-                                modifier = Modifier.size(18.dp)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .scale(animatedScale)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(backgroundColor)
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = null
+                            ) {
+                                onItemSelected(item)
+                            }
+                            .padding(
+                                vertical = if (compact) 4.dp else 6.dp,
+                                horizontal = 2.dp
                             )
-                        }
-
-                        Spacer(modifier = Modifier.height(1.dp))
-
-                        Text(
-                            text = item.title,
-                            fontSize = if (isSelected) 8.5.sp else 8.sp,
-                            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                            color = iconColor,
-                            maxLines = 1
-                        )
-
-                        // Glowing bottom indicator dot for active item
-                        if (isSelected) {
-                            Spacer(modifier = Modifier.height(2.dp))
+                            .testTag("nav_item_${item.name.lowercase()}"),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
                             Box(
                                 modifier = Modifier
-                                    .size(4.dp)
+                                    .size(if (compact) 30.dp else 32.dp)
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary)
-                            )
+                                    .background(if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f) else Color.Transparent),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = item.icon,
+                                    contentDescription = item.title,
+                                    tint = iconColor,
+                                    modifier = Modifier.size(if (compact) 18.dp else 19.dp)
+                                )
+                            }
+
+                            if (!compact) {
+                                Text(
+                                    text = item.title,
+                                    fontSize = if (isSelected) 8.5.sp else 8.sp,
+                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
+                                    color = iconColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Clip
+                                )
+                                if (isSelected) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(4.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.primary)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
